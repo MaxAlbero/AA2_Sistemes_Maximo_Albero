@@ -1,0 +1,19 @@
+#pragma once
+
+
+#define MAP_WIDTH  30
+#define MAP_HEIGHT 15
+
+#define TEXT_AREA_Y (MAP_HEIGHT + 2)
+#define TOP_UI_TEXT_AREA 0
+#define BOTTOM_UI_TEXT_AREA 13
+
+#define PLAYER_MOVE_COOLDOWN 300
+
+#define PLAYER_ATTACK_COOLDOWN 800
+#define PLAYER_ATTACK_DAMAGE 25
+
+#define ENEMY_ATTACK_DAMAGE 5
+
+#define WORLD_WIDTH 3
+#define WORLD_HEIGHT 3
