@@ -123,7 +123,50 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AA2_Maximo_Albero.cpp" />
+    <ClCompile Include="Game\Game.cpp" />
+    <ClCompile Include="Game\main.cpp" />
+    <ClCompile Include="InputSystem\InputSystem.cpp" />
+    <ClCompile Include="Json\ICodable.cpp" />
+    <ClCompile Include="NodeMap\INodeContent.cpp" />
+    <ClCompile Include="NodeMap\Node.cpp" />
+    <ClCompile Include="NodeMap\NodeMap.cpp" />
+    <ClCompile Include="NodeMap\Vector2.cpp" />
+    <ClCompile Include="Utils\ConsoleControl.cpp" />
+    <ClCompile Include="Utils\MessageSystem.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Game\DungeonMap.h" />
+    <ClInclude Include="Game\FloorTile.h" />
+    <ClInclude Include="Game\Game.h" />
+    <ClInclude Include="Game\Room.h" />
+    <ClInclude Include="include\json\allocator.h" />
+    <ClInclude Include="include\json\assertions.h" />
+    <ClInclude Include="include\json\config.h" />
+    <ClInclude Include="include\json\forwards.h" />
+    <ClInclude Include="include\json\json.h" />
+    <ClInclude Include="include\json\json_features.h" />
+    <ClInclude Include="include\json\reader.h" />
+    <ClInclude Include="include\json\value.h" />
+    <ClInclude Include="include\json\version.h" />
+    <ClInclude Include="include\json\writer.h" />
+    <ClInclude Include="InputSystem\InputsConsts.h" />
+    <ClInclude Include="InputSystem\InputSystem.h" />
+    <ClInclude Include="Json\ICodable.h" />
+    <ClInclude Include="NodeMap\INodeContent.h" />
+    <ClInclude Include="NodeMap\Node.h" />
+    <ClInclude Include="NodeMap\NodeMap.h" />
+    <ClInclude Include="NodeMap\Vector2.h" />
+    <ClInclude Include="Utils\ConsoleControl.h" />
+    <ClInclude Include="Utils\GameConstants.h" />
+    <ClInclude Include="Utils\HideConsoleCursor.h" />
+    <ClInclude Include="Utils\MessageSystem.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="include\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="include\PreventInBuildInstalls.cmake" />
+    <None Include="include\PreventInSourceBuilds.cmake" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
