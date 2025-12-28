@@ -1,5 +1,6 @@
 #pragma once
 #include "DungeonMap.h"
+#include "Player.h"
 #include "../InputSystem/InputSystem.h"
 #include <mutex>
 
@@ -12,20 +13,23 @@ public:
     void Start();
     void Stop();
 
-    void Lock();
-    void Unlock();
-
 private:
     DungeonMap* _dungeonMap;
-    InputSystem* _inputHandler;
+    InputSystem* _inputSystem;
+    Player* _player;
+    Vector2 _playerPosition;
+
     int _currentRoomIndex;
     bool _running;
-    std::mutex _classMutex;
+    std::mutex _gameMutex;
 
     void InitializeDungeon();
     void DrawCurrentRoom();
 
-    // Callbacks para input
+    bool CanMoveTo(Vector2 position);
+    void MovePlayer(Vector2 direction);
+    void UpdatePlayerOnMap();
+
     void OnMoveUp();
     void OnMoveDown();
     void OnMoveLeft();

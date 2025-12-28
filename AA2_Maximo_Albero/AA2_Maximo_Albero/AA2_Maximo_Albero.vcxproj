@@ -136,8 +136,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Game\DungeonMap.h" />
-    <ClInclude Include="Game\FloorTile.h" />
+    <ClInclude Include="Game\Wall.h" />
     <ClInclude Include="Game\Game.h" />
+    <ClInclude Include="Game\Player.h" />
     <ClInclude Include="Game\Room.h" />
     <ClInclude Include="include\json\allocator.h" />
     <ClInclude Include="include\json\assertions.h" />

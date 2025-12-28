@@ -2,7 +2,7 @@
 #include "../NodeMap/INodeContent.h"
 #include "../Utils/ConsoleControl.h"
 
-class FloorTile : public INodeContent
+class Wall : public INodeContent
 {
 public:
     void Draw(Vector2 pos) override {

@@ -1,6 +1,6 @@
 #pragma once
 #include "../NodeMap/NodeMap.h"
-#include "FloorTile.h"
+#include "Wall.h"
 
 class Room
 {
@@ -27,8 +27,9 @@ public:
                 _map->SafePickNode(Vector2(x, y), [&, isBorder](Node* n) {
                     if (isBorder)
                     {
-                        n->SetContent(new FloorTile());
+                        n->SetContent(new Wall());
                     }
+                    // Si no es borde, no ponemos nada (nullptr)
                     });
             }
         }
