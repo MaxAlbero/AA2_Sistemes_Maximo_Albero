@@ -30,6 +30,7 @@ private:
     void MovePlayer(Vector2 direction);
     void UpdatePlayerOnMap();
 
+    // Callbacks para input
     void OnMoveUp();
     void OnMoveDown();
     void OnMoveLeft();

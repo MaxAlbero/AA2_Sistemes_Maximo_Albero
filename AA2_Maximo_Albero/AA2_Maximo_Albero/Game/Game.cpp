@@ -8,7 +8,7 @@ Game::Game()
     _dungeonMap = new DungeonMap();
     _inputSystem = new InputSystem();
     _player = nullptr;
-    _playerPosition = Vector2(1, 1); // Posición inicial (dentro del mapa, no en el borde)
+    _playerPosition = Vector2(1, 1);
     _currentRoomIndex = 0;
     _running = false;
 }
@@ -135,6 +135,13 @@ void Game::MovePlayer(Vector2 direction)
         return;
     }
 
+    // Verificar si el jugador puede realizar una acción
+    if (_player != nullptr && !_player->CanPerformAction())
+    {
+        _gameMutex.unlock();
+        return; // No hacer nada si aún no ha pasado el cooldown
+    }
+
     Vector2 newPosition = _playerPosition + direction;
 
     // Verificar si se puede mover a la nueva posición
@@ -143,7 +150,7 @@ void Game::MovePlayer(Vector2 direction)
         Room* currentRoom = _dungeonMap->GetActiveRoom();
         Vector2 oldPosition = _playerPosition;
 
-        // Limpiar la casilla anterior
+        // Limpiar la casilla anterior (dejar vacía)
         currentRoom->GetMap()->SafePickNode(oldPosition, [](Node* node) {
             if (node != nullptr)
             {
@@ -151,11 +158,13 @@ void Game::MovePlayer(Vector2 direction)
             }
             });
 
+        // Actualizar posición
         _playerPosition = newPosition;
 
+        // Colocar jugador en nueva posición
         UpdatePlayerOnMap();
 
-
+        // Redibujar la casilla antigua (ahora vacía - se borrará)
         currentRoom->GetMap()->SafePickNode(oldPosition, [](Node* node) {
             if (node != nullptr)
             {
@@ -163,12 +172,19 @@ void Game::MovePlayer(Vector2 direction)
             }
             });
 
+        // Redibujar la casilla nueva (ahora con jugador)
         currentRoom->GetMap()->SafePickNode(_playerPosition, [](Node* node) {
             if (node != nullptr)
             {
                 node->DrawContent(Vector2(0, 0));
             }
             });
+
+        // Actualizar el tiempo de la última acción del jugador
+        if (_player != nullptr)
+        {
+            _player->UpdateActionTime();
+        }
     }
 
     _gameMutex.unlock();
