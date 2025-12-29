@@ -2,14 +2,22 @@
 #include "../NodeMap/INodeContent.h"
 #include "../Utils/ConsoleControl.h"
 #include "../NodeMap/Vector2.h"
+
+#include "../Utils/IAttacker.h"
+#include "../Utils/IDamageable.h"
 #include <chrono>
 
-class Player : public INodeContent
+class Player : public INodeContent, public IAttacker, public IDamageable
 {
 private:
     Vector2 _position;
     std::chrono::steady_clock::time_point _lastActionTime;
     int _actionCooldownMs = 400; // Milisegundos entre acciones
+
+    int _hp = 50;
+    int _coins = 0;
+    int _potionCount = 1;
+    int _weapon = 0;
 
 public:
     Player(Vector2 startPosition)
@@ -46,5 +54,13 @@ public:
     void SetActionCooldown(int milliseconds)
     {
         _actionCooldownMs = milliseconds;
+    }
+
+    void Attack(IDamageable* entity) const override {
+        entity->ReceiveDamage(20);
+    }
+
+    void ReceiveDamage(int damageToAdd) override {
+        std::cout << "El player pierde 10 de vida" << std::endl;
     }
 };
