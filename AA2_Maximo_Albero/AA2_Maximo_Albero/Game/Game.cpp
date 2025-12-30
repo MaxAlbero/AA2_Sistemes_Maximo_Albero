@@ -42,9 +42,9 @@ void Game::InitializeDungeon()
 
     // Spawner algunos enemigos de prueba usando el EntityManager
     Room* currentRoom = _dungeonMap->GetActiveRoom();
-    _entityManager->SpawnEnemy(Vector2(5, 5), currentRoom);
-    _entityManager->SpawnEnemy(Vector2(10, 3), currentRoom);
     _entityManager->SpawnEnemy(Vector2(15, 7), currentRoom);
+    _entityManager->SpawnEnemy(Vector2(3, 5), currentRoom);
+    _entityManager->SpawnEnemy(Vector2(12, 2), currentRoom);
 }
 
 void Game::Start()
@@ -59,8 +59,14 @@ void Game::Start()
 
     _running = true;
 
+    // Inicializar el mapa
     InitializeDungeon();
 
+    // Registrar los listeners de input
+    _inputSystem->AddListener(K_UP, [this]() { this->OnMoveUp(); });
+    _inputSystem->AddListener(K_DOWN, [this]() { this->OnMoveDown(); });
+    _inputSystem->AddListener(K_LEFT, [this]() { this->OnMoveLeft(); });
+    _inputSystem->AddListener(K_RIGHT, [this]() { this->OnMoveRight(); });
     _inputSystem->AddListener(K_W, [this]() { this->OnMoveUp(); });
     _inputSystem->AddListener(K_S, [this]() { this->OnMoveDown(); });
     _inputSystem->AddListener(K_A, [this]() { this->OnMoveLeft(); });
@@ -68,15 +74,37 @@ void Game::Start()
 
     _gameMutex.unlock();
 
+    // Limpiar pantalla y dibujar el mapa inicial
     CC::Clear();
     DrawCurrentRoom();
 
-
+    // Iniciar el sistema de input en un thread separado
     _inputSystem->StartListen();
 
-    std::cout << "\n\nUsa WASD para moverte." << std::endl;
+    // Iniciar movimiento de enemigos con callback para obtener la posición del jugador
+    Room* currentRoom = _dungeonMap->GetActiveRoom();
+    _entityManager->StartEnemyMovement(
+        currentRoom,
+        // Callback 1: Obtener posición del jugador
+        [this]() {
+            this->_gameMutex.lock();
+            Vector2 pos = this->_playerPosition;
+            this->_gameMutex.unlock();
+            return pos;
+        },
+        // Callback 2: Cuando un enemigo ataca al jugador
+        [this](Enemy* enemy) {
+            if (enemy != nullptr && this->_player != nullptr)
+            {
+                enemy->Attack(this->_player);
+            }
+        }
+    );
+
+    std::cout << "\n\nUsa las flechas o WASD para moverte." << std::endl;
 }
 
+   
 void Game::Stop()
 {
     _gameMutex.lock();
@@ -89,6 +117,7 @@ void Game::Stop()
 
     _running = false;
     _inputSystem->StopListen();
+    _entityManager->StopEnemyMovement();
 
     _gameMutex.unlock();
 }

@@ -33,6 +33,8 @@ private:
     void MovePlayer(Vector2 direction);
     void UpdatePlayerOnMap();
 
+    void UpdateEnemyMovement();
+
     // Callbacks para input
     void OnMoveUp();
     void OnMoveDown();
