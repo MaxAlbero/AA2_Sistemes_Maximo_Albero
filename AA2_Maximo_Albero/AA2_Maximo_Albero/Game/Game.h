@@ -1,6 +1,7 @@
 #pragma once
 #include "DungeonMap.h"
 #include "Player.h"
+#include "EntityManager.h"
 #include "../InputSystem/InputSystem.h"
 #include <mutex>
 
@@ -16,6 +17,7 @@ public:
 private:
     DungeonMap* _dungeonMap;
     InputSystem* _inputSystem;
+    EntityManager* _entityManager;
     Player* _player;
     Vector2 _playerPosition;
 
@@ -27,8 +29,11 @@ private:
     void DrawCurrentRoom();
 
     bool CanMoveTo(Vector2 position);
+    bool IsPositionOccupied(Vector2 position);
     void MovePlayer(Vector2 direction);
     void UpdatePlayerOnMap();
+
+    void UpdateEnemyMovement();
 
     // Callbacks para input
     void OnMoveUp();

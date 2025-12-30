@@ -57,7 +57,8 @@ public:
     }
 
     void Attack(IDamageable* entity) const override {
-        entity->ReceiveDamage(20);
+        if(entity != nullptr)
+            entity->ReceiveDamage(20);
     }
 
     void ReceiveDamage(int damageToAdd) override {
