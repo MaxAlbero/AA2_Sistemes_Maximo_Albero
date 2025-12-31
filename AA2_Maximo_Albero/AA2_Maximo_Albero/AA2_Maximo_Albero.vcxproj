@@ -135,6 +135,7 @@
     <ClCompile Include="Utils\MessageSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Game\Chest.h" />
     <ClInclude Include="Game\DungeonMap.h" />
     <ClInclude Include="Game\Enemy.h" />
     <ClInclude Include="Game\EntityManager.h" />

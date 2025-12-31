@@ -7,6 +7,8 @@
 #include <functional>
 #include "../NodeMap/Vector2.h"
 #include "Enemy.h"
+#include "Chest.h"
+
 #include "Room.h"
 #include "Wall.h"
 
@@ -14,6 +16,7 @@ class EntityManager
 {
 private:
     std::vector<Enemy*> _enemies;
+    std::vector<Chest*> _chests;
     std::mutex _managerMutex;
 
     // Thread para gestionar movimiento de enemigos
@@ -60,6 +63,30 @@ public:
 
         // Iniciar movimiento del enemigo
         enemy->StartMovement();
+    }
+
+    void SpawnChest(Vector2 position, Room* room) {
+        if (room == nullptr)
+            return;
+
+        _managerMutex.lock();
+        Chest* chest = new Chest(position);
+        _chests.push_back(chest);
+
+        _managerMutex.unlock();
+
+        room->GetMap()->SafePickNode(position, [chest](Node* node) {
+            if (node != nullptr) {
+                node->SetContent(chest);
+            }
+            });
+
+        room->GetMap()->SafePickNode(position, [](Node* node) {
+            if (node != nullptr)
+            {
+                node->DrawContent(Vector2(0, 0));
+            }
+            });
     }
 
     //void RemoveEnemy(Enemy* enemy, Room* room)
@@ -201,6 +228,12 @@ public:
         }
         _enemies.clear();
 
+
+        for (Chest* chest : _chests) {
+            delete chest;
+        }
+        _chests.clear();
+
         _managerMutex.unlock();
     }
 
@@ -239,8 +272,98 @@ public:
         }
     }
 
+    bool IsPositionOccupiedByChest(Vector2 position)
+    {
+        _managerMutex.lock();
+
+        bool occupied = false;
+        for (const Chest* chest : _chests)
+        {
+            Vector2 chestPos = const_cast<Chest*>(chest)->GetPosition();
+            if (chestPos.X == position.X && chestPos.Y == position.Y)
+            {
+                occupied = true;
+                break;
+            }
+        }
+
+        _managerMutex.unlock();
+        return occupied;
+    }
+
+    Chest* GetChestAtPosition(Vector2 position)
+    {
+        _managerMutex.lock();
+
+        Chest* foundChest = nullptr;
+        for (Chest* chest : _chests)
+        {
+            Vector2 chestPos = chest->GetPosition();
+            if (chestPos.X == position.X && chestPos.Y == position.Y)
+            {
+                foundChest = chest;
+                break;
+            }
+        }
+
+        _managerMutex.unlock();
+        return foundChest;
+    }
+
+    void CleanupBrokenChests(Room* room)
+    {
+        if (room == nullptr)
+            return;
+
+        _managerMutex.lock();
+
+        for (auto it = _chests.begin(); it != _chests.end();)
+        {
+            Chest* chest = *it;
+            if (chest->IsBroken())
+            {
+                Vector2 chestPos = chest->GetPosition();
+
+                // Limpiar del mapa
+                room->GetMap()->SafePickNode(chestPos, [](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->SetContent(nullptr);
+                    }
+                    });
+
+                // Redibujar la posición
+                room->GetMap()->SafePickNode(chestPos, [](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->DrawContent(Vector2(0, 0));
+                    }
+                    });
+
+                delete chest;
+                it = _chests.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        _managerMutex.unlock();
+    }
+
+    int GetChestCount()
+    {
+        _managerMutex.lock();
+        int count = _chests.size();
+        _managerMutex.unlock();
+        return count;
+    }
+
     void Lock() { _managerMutex.lock(); }
     void Unlock() { _managerMutex.unlock(); }
+
+
 
 private:
     bool IsAdjacent(Vector2 pos1, Vector2 pos2)
@@ -375,8 +498,24 @@ private:
                 }
             }
         }
+
+        if (canMove)
+        {
+            for (Chest* chest : _chests)
+            {
+                Vector2 chestPos = chest->GetPosition();
+                if (chestPos.X == newPosition.X && chestPos.Y == newPosition.Y)
+                {
+                    canMove = false;
+                    break;
+                }
+            }
+        }
+
         _managerMutex.unlock();
 
         return canMove;
     }
+
+
 };
