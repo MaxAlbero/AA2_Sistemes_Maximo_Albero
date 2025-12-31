@@ -42,11 +42,14 @@ void Game::InitializeDungeon()
 
     // Spawner algunos enemigos de prueba usando el EntityManager
     Room* currentRoom = _dungeonMap->GetActiveRoom();
-    _entityManager->SpawnEnemy(Vector2(15, 7), currentRoom);
-    _entityManager->SpawnEnemy(Vector2(3, 5), currentRoom);
-    _entityManager->SpawnEnemy(Vector2(12, 2), currentRoom);
+    //_entityManager->SpawnEnemy(Vector2(15, 7), currentRoom);
+    //_entityManager->SpawnEnemy(Vector2(3, 5), currentRoom);
+    //_entityManager->SpawnEnemy(Vector2(12, 2), currentRoom);
 
-    _entityManager->SpawnChest(Vector2(5, 5), currentRoom);
+    //_entityManager->SpawnChest(Vector2(5, 5), currentRoom);
+
+    _entityManager->SpawnItem(Vector2(8, 3), ItemType::COIN, currentRoom);
+    _entityManager->SpawnItem(Vector2(10, 4), ItemType::POTION, currentRoom);
 
 }
 
@@ -70,6 +73,14 @@ void Game::Start()
     _inputSystem->AddListener(K_S, [this]() { this->OnMoveDown(); });
     _inputSystem->AddListener(K_A, [this]() { this->OnMoveLeft(); });
     _inputSystem->AddListener(K_D, [this]() { this->OnMoveRight(); });
+
+    _inputSystem->AddListener(K_SPACE, [this]() {
+        if (this->_player != nullptr)
+        {
+            this->_player->UsePotion();
+        }
+        });
+
 
     _gameMutex.unlock();
 
@@ -222,6 +233,34 @@ void Game::MovePlayer(Vector2 direction)
 
         _gameMutex.unlock();
         return; // NO nos movemos, solo atacamos
+    }
+
+    Item* itemAtPosition = _entityManager->GetItemAtPosition(newPosition);
+    if (itemAtPosition != nullptr)
+    {
+        // Recoger el item según su tipo
+        ItemType type = itemAtPosition->GetType();
+
+        switch (type)
+        {
+        case ItemType::COIN:
+            _player->AddCoin();
+            std::cout << "¡Moneda recogida! Total: " << _player->GetCoins() << std::endl;
+            break;
+        case ItemType::POTION:
+            _player->AddPotion();
+            std::cout << "¡Poción recogida! Total: " << _player->GetPotionCount() << std::endl;
+            break;
+        case ItemType::WEAPON:
+            _player->ChangeWeapon();
+            //std::cout << "¡Cambio de Arma!" << std::endl;
+            break;
+        }
+
+        // Eliminar el item del mapa
+        _entityManager->RemoveItem(itemAtPosition, currentRoom);
+
+        // No gastamos cooldown al recoger items, seguimos moviendo
     }
 
     // NO HAY ENEMIGO - MOVERSE

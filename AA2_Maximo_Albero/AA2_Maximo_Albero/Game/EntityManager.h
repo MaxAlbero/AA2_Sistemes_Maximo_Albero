@@ -8,6 +8,7 @@
 #include "../NodeMap/Vector2.h"
 #include "Enemy.h"
 #include "Chest.h"
+#include "Item.h"
 
 #include "Room.h"
 #include "Wall.h"
@@ -17,6 +18,8 @@ class EntityManager
 private:
     std::vector<Enemy*> _enemies;
     std::vector<Chest*> _chests;
+    std::vector<Item*> _items;
+
     std::mutex _managerMutex;
 
     // Thread para gestionar movimiento de enemigos
@@ -234,6 +237,11 @@ public:
         }
         _chests.clear();
 
+        for(Item* item : _items){
+            delete item;
+        }
+        _items.clear();
+
         _managerMutex.unlock();
     }
 
@@ -359,6 +367,108 @@ public:
         _managerMutex.unlock();
         return count;
     }
+
+    void SpawnItem(Vector2 position, ItemType type, Room* room)
+    {
+        if (room == nullptr)
+            return;
+
+        _managerMutex.lock();
+        Item* item = new Item(position, type);
+        _items.push_back(item);
+        _managerMutex.unlock();
+
+        // Colocar item en el mapa
+        room->GetMap()->SafePickNode(position, [item](Node* node) {
+            if (node != nullptr)
+            {
+                node->SetContent(item);
+            }
+            });
+
+        // Dibujar el item
+        room->GetMap()->SafePickNode(position, [](Node* node) {
+            if (node != nullptr)
+            {
+                node->DrawContent(Vector2(0, 0));
+            }
+            });
+    }
+
+    Item* GetItemAtPosition(Vector2 position)
+    {
+        _managerMutex.lock();
+
+        Item* foundItem = nullptr;
+        for (Item* item : _items)
+        {
+            Vector2 itemPos = item->GetPosition();
+            if (itemPos.X == position.X && itemPos.Y == position.Y)
+            {
+                foundItem = item;
+                break;
+            }
+        }
+
+        _managerMutex.unlock();
+        return foundItem;
+    }
+
+    void RemoveItem(Item* item, Room* room)
+    {
+        if (item == nullptr || room == nullptr)
+            return;
+
+        _managerMutex.lock();
+
+        Vector2 itemPos = item->GetPosition();
+
+        // Limpiar del mapa
+        room->GetMap()->SafePickNode(itemPos, [](Node* node) {
+            if (node != nullptr)
+            {
+                node->SetContent(nullptr);
+            }
+            });
+
+        // Redibujar la posición
+        room->GetMap()->SafePickNode(itemPos, [](Node* node) {
+            if (node != nullptr)
+            {
+                node->DrawContent(Vector2(0, 0));
+            }
+            });
+
+        // Eliminar de la lista
+        auto it = std::find(_items.begin(), _items.end(), item);
+        if (it != _items.end())
+        {
+            delete item;
+            _items.erase(it);
+        }
+
+        _managerMutex.unlock();
+    }
+
+    bool IsPositionOccupiedByItem(Vector2 position)
+    {
+        _managerMutex.lock();
+
+        bool occupied = false;
+        for (const Item* item : _items)
+        {
+            Vector2 itemPos = const_cast<Item*>(item)->GetPosition();
+            if (itemPos.X == position.X && itemPos.Y == position.Y)
+            {
+                occupied = true;
+                break;
+            }
+        }
+
+        _managerMutex.unlock();
+        return occupied;
+    }
+
 
     void Lock() { _managerMutex.lock(); }
     void Unlock() { _managerMutex.unlock(); }
@@ -517,5 +627,7 @@ private:
         return canMove;
     }
 
+
+    
 
 };
