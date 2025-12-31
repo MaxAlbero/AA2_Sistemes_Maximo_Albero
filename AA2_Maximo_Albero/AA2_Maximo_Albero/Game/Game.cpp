@@ -45,6 +45,9 @@ void Game::InitializeDungeon()
     _entityManager->SpawnEnemy(Vector2(15, 7), currentRoom);
     _entityManager->SpawnEnemy(Vector2(3, 5), currentRoom);
     _entityManager->SpawnEnemy(Vector2(12, 2), currentRoom);
+
+    _entityManager->SpawnChest(Vector2(5, 5), currentRoom);
+
 }
 
 void Game::Start()
@@ -63,10 +66,6 @@ void Game::Start()
     InitializeDungeon();
 
     // Registrar los listeners de input
-    _inputSystem->AddListener(K_UP, [this]() { this->OnMoveUp(); });
-    _inputSystem->AddListener(K_DOWN, [this]() { this->OnMoveDown(); });
-    _inputSystem->AddListener(K_LEFT, [this]() { this->OnMoveLeft(); });
-    _inputSystem->AddListener(K_RIGHT, [this]() { this->OnMoveRight(); });
     _inputSystem->AddListener(K_W, [this]() { this->OnMoveUp(); });
     _inputSystem->AddListener(K_S, [this]() { this->OnMoveDown(); });
     _inputSystem->AddListener(K_A, [this]() { this->OnMoveLeft(); });

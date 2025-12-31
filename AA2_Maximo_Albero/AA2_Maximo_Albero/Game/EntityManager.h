@@ -7,6 +7,8 @@
 #include <functional>
 #include "../NodeMap/Vector2.h"
 #include "Enemy.h"
+#include "Chest.h"
+
 #include "Room.h"
 #include "Wall.h"
 
@@ -14,6 +16,7 @@ class EntityManager
 {
 private:
     std::vector<Enemy*> _enemies;
+    std::vector<Chest*> _chests;
     std::mutex _managerMutex;
 
     // Thread para gestionar movimiento de enemigos
@@ -60,6 +63,30 @@ public:
 
         // Iniciar movimiento del enemigo
         enemy->StartMovement();
+    }
+
+    void SpawnChest(Vector2 position, Room* room) {
+        if (room == nullptr)
+            return;
+
+        _managerMutex.lock();
+        Chest* chest = new Chest(position);
+        _chests.push_back(chest);
+
+        _managerMutex.unlock();
+
+        room->GetMap()->SafePickNode(position, [chest](Node* node) {
+            if (node != nullptr) {
+                node->SetContent(chest);
+            }
+            });
+
+        room->GetMap()->SafePickNode(position, [](Node* node) {
+            if (node != nullptr)
+            {
+                node->DrawContent(Vector2(0, 0));
+            }
+            });
     }
 
     //void RemoveEnemy(Enemy* enemy, Room* room)
@@ -200,6 +227,12 @@ public:
             delete enemy;
         }
         _enemies.clear();
+
+
+        for (Chest* chest : _chests) {
+            delete chest;
+        }
+        _chests.clear();
 
         _managerMutex.unlock();
     }
