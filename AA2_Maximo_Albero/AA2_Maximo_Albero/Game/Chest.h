@@ -11,11 +11,11 @@ private:
     int _hp;
 
     std::mutex _chestMutex;
-    bool broken; //necesita empezar como "= false"
+    bool _broken; //necesita empezar como "= false"
 
 public:
     Chest(Vector2 position, int hp = 20)
-        : _position(position), _hp(hp), broken(false) {}
+        : _position(position), _hp(hp), _broken(false) {}
 
     ~Chest() {}
 
@@ -41,7 +41,8 @@ public:
         if (_hp <= 0)
         {
             _hp = 0;
-            IsBroken();
+            _broken = true;
+            //std::cout << "¡Cofre destruido!" << std::endl;
         }  
 
         _chestMutex.unlock();
@@ -49,12 +50,9 @@ public:
 
     bool IsBroken() {
         _chestMutex.lock();
-
-        broken = true;
-
+        bool isBroken = _broken;
         _chestMutex.unlock();
-
-        return broken;
+        return isBroken;
     }
 
 };

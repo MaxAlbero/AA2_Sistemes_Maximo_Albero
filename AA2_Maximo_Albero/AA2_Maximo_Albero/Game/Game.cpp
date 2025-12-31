@@ -209,6 +209,21 @@ void Game::MovePlayer(Vector2 direction)
         return; // NO nos movemos, solo atacamos
     }
 
+    Chest* chestAtPosition = _entityManager->GetChestAtPosition(newPosition);
+
+    if (chestAtPosition != nullptr)
+    {
+        // HAY UN COFRE - ATACAR en lugar de moverse
+        _player->Attack(chestAtPosition);
+        _player->UpdateActionTime();
+
+        // Limpiar cofres rotos después del ataque
+        _entityManager->CleanupBrokenChests(currentRoom);
+
+        _gameMutex.unlock();
+        return; // NO nos movemos, solo atacamos
+    }
+
     // NO HAY ENEMIGO - MOVERSE
     Vector2 oldPosition = _playerPosition;
 
