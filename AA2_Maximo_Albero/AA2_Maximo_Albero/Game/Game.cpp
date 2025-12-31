@@ -286,7 +286,7 @@ void Game::OnMoveRight()
     MovePlayer(Vector2(1, 0));
 }
 
-bool Game::IsPositionOccupied(Vector2 position)
+bool Game::IsPositionOccupied(Vector2 position) //NOTE: THIS WILL BE USED LATER WHEN SPAWNING ENTITIES PERIODICALLY IN THE MIDDLE OF THE RUN
 {
     // Verificar si el jugador está en esa posición
     if (_playerPosition.X == position.X && _playerPosition.Y == position.Y)
