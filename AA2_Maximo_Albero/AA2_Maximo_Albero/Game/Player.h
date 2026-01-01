@@ -139,6 +139,15 @@ public:
         _playerMutex.unlock();
     }
 
+
+    int GetAttackRange()
+    {
+        _playerMutex.lock();
+        int range = (_weapon == 0) ? 1 : 2; // Espada = 1, Lanza = 2
+        _playerMutex.unlock();
+        return range;
+    }
+
     int GetHP()
     {
         _playerMutex.lock();

@@ -516,6 +516,63 @@ public:
     }
 
 
+    bool TryAttackEnemyAt(Vector2 position, Player* attacker, Room* room)
+    {
+        _managerMutex.lock();
+
+        Enemy* enemy = nullptr;
+        for (Enemy* e : _enemies)
+        {
+            Vector2 enemyPos = e->GetPosition();
+            if (enemyPos.X == position.X && enemyPos.Y == position.Y)
+            {
+                enemy = e;
+                break;
+            }
+        }
+
+        if (enemy != nullptr)
+        {
+            attacker->Attack(enemy);
+            _managerMutex.unlock();
+
+            CleanupDeadEnemies(room);
+            return true;
+        }
+
+        _managerMutex.unlock();
+        return false;
+    }
+
+    bool TryAttackChestAt(Vector2 position, Player* attacker, Room* room)
+    {
+        _managerMutex.lock();
+
+        Chest* chest = nullptr;
+        for (Chest* c : _chests)
+        {
+            Vector2 chestPos = c->GetPosition();
+            if (chestPos.X == position.X && chestPos.Y == position.Y)
+            {
+                chest = c;
+                break;
+            }
+        }
+
+        if (chest != nullptr)
+        {
+            attacker->Attack(chest);
+            _managerMutex.unlock();
+
+            CleanupBrokenChests(room);
+            return true;
+        }
+
+        _managerMutex.unlock();
+        return false;
+    }
+
+
     void Lock() { _managerMutex.lock(); }
     void Unlock() { _managerMutex.unlock(); }
 

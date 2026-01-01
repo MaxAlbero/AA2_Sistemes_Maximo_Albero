@@ -206,6 +206,58 @@ void Game::MovePlayer(Vector2 direction)
     }
 
     Room* currentRoom = _dungeonMap->GetActiveRoom();
+    int attackRange = _player->GetAttackRange();
+
+    bool attacked = false;
+
+    for (int range = 1; range <= attackRange && !attacked; range++)
+    {
+        // Calcular la posición objetivo manualmente
+        Vector2 targetPosition = Vector2(
+            _playerPosition.X + (direction.X * range),
+            _playerPosition.Y + (direction.Y * range)
+        );
+
+        // Verificar si hay pared en el camino
+        bool pathBlocked = false;
+        for (int checkRange = 1; checkRange <= range; checkRange++)
+        {
+            Vector2 checkPos = Vector2(
+                _playerPosition.X + (direction.X * checkRange),
+                _playerPosition.Y + (direction.Y * checkRange)
+            );
+
+            if (!CanMoveTo(checkPos))
+            {
+                pathBlocked = true;
+                break;
+            }
+        }
+
+        if (pathBlocked)
+            break; // No se puede atacar más allá de una pared
+
+
+        if (_entityManager->TryAttackEnemyAt(targetPosition, _player, currentRoom))
+        {
+            _player->UpdateActionTime();
+            attacked = true;
+            break;
+        }
+
+        if (_entityManager->TryAttackChestAt(targetPosition, _player, currentRoom))
+        {
+            _player->UpdateActionTime();
+            attacked = true;
+            break;
+        }
+    }
+
+    if (attacked)
+    {
+        _gameMutex.unlock();
+        return; // No moverse si atacamos
+    }
 
     // Verificar si hay un enemigo en la posición objetivo
     Enemy* enemyAtPosition = _entityManager->GetEnemyAtPosition(newPosition);
