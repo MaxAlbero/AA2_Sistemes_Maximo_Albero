@@ -31,7 +31,7 @@ public:
         switch (_type)
         {
         case ItemType::COIN:
-            std::cout << "c";  // 'c' para coin
+            std::cout << "k";  // 'c' para coin
             break;
         case ItemType::POTION:
             std::cout << "o";  // 'o' para potion

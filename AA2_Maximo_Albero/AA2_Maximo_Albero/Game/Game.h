@@ -2,6 +2,7 @@
 #include "DungeonMap.h"
 #include "Player.h"
 #include "EntityManager.h"
+#include "Spawner.h"
 #include "../InputSystem/InputSystem.h"
 #include <mutex>
 
@@ -18,6 +19,7 @@ private:
     DungeonMap* _dungeonMap;
     InputSystem* _inputSystem;
     EntityManager* _entityManager;
+    Spawner* _spawner;
     Player* _player;
     Vector2 _playerPosition;
 
