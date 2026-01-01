@@ -42,19 +42,22 @@ void Game::InitializeDungeon()
 
     // Spawner algunos enemigos de prueba usando el EntityManager
     Room* currentRoom = _dungeonMap->GetActiveRoom();
-    //_entityManager->SpawnEnemy(Vector2(15, 7), currentRoom);
-    //_entityManager->SpawnEnemy(Vector2(3, 5), currentRoom);
-    //_entityManager->SpawnEnemy(Vector2(12, 2), currentRoom);
 
-    //_entityManager->SpawnChest(Vector2(5, 5), currentRoom);
+    _entityManager->SpawnEnemy(Vector2(15, 7), currentRoom);
+    _entityManager->SpawnEnemy(Vector2(3, 5), currentRoom);
+    _entityManager->SpawnEnemy(Vector2(12, 2), currentRoom);
 
-    _entityManager->SpawnItem(Vector2(8, 3), ItemType::COIN, currentRoom);
-    _entityManager->SpawnItem(Vector2(10, 4), ItemType::POTION, currentRoom);
+    _entityManager->SpawnChest(Vector2(5, 3), currentRoom);
+
+    //_entityManager->SpawnItem(Vector2(3, 3), ItemType::COIN, currentRoom);
+    //_entityManager->SpawnItem(Vector2(10, 4), ItemType::POTION, currentRoom);
 
 }
 
 void Game::Start()
 {
+    srand((unsigned int)time(NULL));
+
     _gameMutex.lock();
 
     if (_running)
@@ -245,11 +248,11 @@ void Game::MovePlayer(Vector2 direction)
         {
         case ItemType::COIN:
             _player->AddCoin();
-            std::cout << "¡Moneda recogida! Total: " << _player->GetCoins() << std::endl;
+            //std::cout << "¡Moneda recogida! Total: " << _player->GetCoins() << std::endl;
             break;
         case ItemType::POTION:
             _player->AddPotion();
-            std::cout << "¡Poción recogida! Total: " << _player->GetPotionCount() << std::endl;
+            //std::cout << "¡Poción recogida! Total: " << _player->GetPotionCount() << std::endl;
             break;
         case ItemType::WEAPON:
             _player->ChangeWeapon();

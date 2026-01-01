@@ -146,6 +146,9 @@ public:
                 enemy->StopMovement();
                 Vector2 enemyPos = enemy->GetPosition();
 
+                //Here the the loot the enemy is going to drop is selected randomly
+                ItemType loot = SelectLoot();
+
                 // Limpiar del mapa
                 room->GetMap()->SafePickNode(enemyPos, [](Node* node) {
                     if (node != nullptr)
@@ -154,7 +157,7 @@ public:
                     }
                     });
 
-                // Redibujar la posición
+                // Redibujar la posición (ahora vacía)
                 room->GetMap()->SafePickNode(enemyPos, [](Node* node) {
                     if (node != nullptr)
                     {
@@ -164,6 +167,11 @@ public:
 
                 delete enemy;
                 it = _enemies.erase(it);
+
+                // Dropear loot en la misma posición
+                _managerMutex.unlock();
+                DropLoot(enemyPos, loot, room);
+                _managerMutex.lock();
             }
             else
             {
@@ -332,6 +340,9 @@ public:
             {
                 Vector2 chestPos = chest->GetPosition();
 
+                // Generar loot
+                ItemType loot = SelectLoot();
+
                 // Limpiar del mapa
                 room->GetMap()->SafePickNode(chestPos, [](Node* node) {
                     if (node != nullptr)
@@ -340,7 +351,7 @@ public:
                     }
                     });
 
-                // Redibujar la posición
+                // Redibujar la posición (ahora vacía)
                 room->GetMap()->SafePickNode(chestPos, [](Node* node) {
                     if (node != nullptr)
                     {
@@ -350,6 +361,11 @@ public:
 
                 delete chest;
                 it = _chests.erase(it);
+
+                // Dropear loot en la misma posición
+                _managerMutex.unlock();
+                DropLoot(chestPos, loot, room);
+                _managerMutex.lock();
             }
             else
             {
@@ -467,6 +483,36 @@ public:
 
         _managerMutex.unlock();
         return occupied;
+    }
+
+    ItemType SelectLoot() {
+        srand((unsigned int)time(NULL));
+        ItemType lootItem;
+        int lootNum = rand() % 3;
+
+        switch (lootNum) {
+        case 0:
+            lootItem = ItemType::COIN;
+            break;
+        case 1:
+            lootItem = ItemType::POTION;
+            break;
+        case 2:
+            lootItem = ItemType::WEAPON;
+            break;
+        default:
+            lootItem = ItemType::COIN;
+        }
+
+        return lootItem;
+    }
+
+    void DropLoot(Vector2 position, ItemType lootItem, Room* room)
+    {
+        if (room == nullptr)
+            return;
+
+        SpawnItem(position, lootItem, room);
     }
 
 
