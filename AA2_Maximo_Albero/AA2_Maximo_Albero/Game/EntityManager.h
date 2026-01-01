@@ -8,6 +8,7 @@
 #include "../NodeMap/Vector2.h"
 #include "Enemy.h"
 #include "Chest.h"
+#include "Item.h"
 
 #include "Room.h"
 #include "Wall.h"
@@ -17,6 +18,8 @@ class EntityManager
 private:
     std::vector<Enemy*> _enemies;
     std::vector<Chest*> _chests;
+    std::vector<Item*> _items;
+
     std::mutex _managerMutex;
 
     // Thread para gestionar movimiento de enemigos
@@ -143,6 +146,9 @@ public:
                 enemy->StopMovement();
                 Vector2 enemyPos = enemy->GetPosition();
 
+                //Here the the loot the enemy is going to drop is selected randomly
+                ItemType loot = SelectLoot();
+
                 // Limpiar del mapa
                 room->GetMap()->SafePickNode(enemyPos, [](Node* node) {
                     if (node != nullptr)
@@ -151,7 +157,7 @@ public:
                     }
                     });
 
-                // Redibujar la posición
+                // Redibujar la posición (ahora vacía)
                 room->GetMap()->SafePickNode(enemyPos, [](Node* node) {
                     if (node != nullptr)
                     {
@@ -161,6 +167,11 @@ public:
 
                 delete enemy;
                 it = _enemies.erase(it);
+
+                // Dropear loot en la misma posición
+                _managerMutex.unlock();
+                DropLoot(enemyPos, loot, room);
+                _managerMutex.lock();
             }
             else
             {
@@ -233,6 +244,11 @@ public:
             delete chest;
         }
         _chests.clear();
+
+        for(Item* item : _items){
+            delete item;
+        }
+        _items.clear();
 
         _managerMutex.unlock();
     }
@@ -324,6 +340,9 @@ public:
             {
                 Vector2 chestPos = chest->GetPosition();
 
+                // Generar loot
+                ItemType loot = SelectLoot();
+
                 // Limpiar del mapa
                 room->GetMap()->SafePickNode(chestPos, [](Node* node) {
                     if (node != nullptr)
@@ -332,7 +351,7 @@ public:
                     }
                     });
 
-                // Redibujar la posición
+                // Redibujar la posición (ahora vacía)
                 room->GetMap()->SafePickNode(chestPos, [](Node* node) {
                     if (node != nullptr)
                     {
@@ -342,6 +361,11 @@ public:
 
                 delete chest;
                 it = _chests.erase(it);
+
+                // Dropear loot en la misma posición
+                _managerMutex.unlock();
+                DropLoot(chestPos, loot, room);
+                _managerMutex.lock();
             }
             else
             {
@@ -359,6 +383,138 @@ public:
         _managerMutex.unlock();
         return count;
     }
+
+    void SpawnItem(Vector2 position, ItemType type, Room* room)
+    {
+        if (room == nullptr)
+            return;
+
+        _managerMutex.lock();
+        Item* item = new Item(position, type);
+        _items.push_back(item);
+        _managerMutex.unlock();
+
+        // Colocar item en el mapa
+        room->GetMap()->SafePickNode(position, [item](Node* node) {
+            if (node != nullptr)
+            {
+                node->SetContent(item);
+            }
+            });
+
+        // Dibujar el item
+        room->GetMap()->SafePickNode(position, [](Node* node) {
+            if (node != nullptr)
+            {
+                node->DrawContent(Vector2(0, 0));
+            }
+            });
+    }
+
+    Item* GetItemAtPosition(Vector2 position)
+    {
+        _managerMutex.lock();
+
+        Item* foundItem = nullptr;
+        for (Item* item : _items)
+        {
+            Vector2 itemPos = item->GetPosition();
+            if (itemPos.X == position.X && itemPos.Y == position.Y)
+            {
+                foundItem = item;
+                break;
+            }
+        }
+
+        _managerMutex.unlock();
+        return foundItem;
+    }
+
+    void RemoveItem(Item* item, Room* room)
+    {
+        if (item == nullptr || room == nullptr)
+            return;
+
+        _managerMutex.lock();
+
+        Vector2 itemPos = item->GetPosition();
+
+        // Limpiar del mapa
+        room->GetMap()->SafePickNode(itemPos, [](Node* node) {
+            if (node != nullptr)
+            {
+                node->SetContent(nullptr);
+            }
+            });
+
+        // Redibujar la posición
+        room->GetMap()->SafePickNode(itemPos, [](Node* node) {
+            if (node != nullptr)
+            {
+                node->DrawContent(Vector2(0, 0));
+            }
+            });
+
+        // Eliminar de la lista
+        auto it = std::find(_items.begin(), _items.end(), item);
+        if (it != _items.end())
+        {
+            delete item;
+            _items.erase(it);
+        }
+
+        _managerMutex.unlock();
+    }
+
+    bool IsPositionOccupiedByItem(Vector2 position)
+    {
+        _managerMutex.lock();
+
+        bool occupied = false;
+        for (const Item* item : _items)
+        {
+            Vector2 itemPos = const_cast<Item*>(item)->GetPosition();
+            if (itemPos.X == position.X && itemPos.Y == position.Y)
+            {
+                occupied = true;
+                break;
+            }
+        }
+
+        _managerMutex.unlock();
+        return occupied;
+    }
+
+    ItemType SelectLoot() {
+        srand((unsigned int)time(NULL));
+        ItemType lootItem;
+        int lootNum = rand() % 3;
+
+        switch (lootNum) {
+        case 0:
+            lootItem = ItemType::COIN;
+            break;
+        case 1:
+            lootItem = ItemType::POTION;
+            break;
+        case 2:
+            lootItem = ItemType::WEAPON;
+            break;
+        default:
+            lootItem = ItemType::COIN;
+        }
+
+        return lootItem;
+    }
+
+    void DropLoot(Vector2 position, ItemType lootItem, Room* room)
+    {
+        if (room == nullptr)
+            return;
+
+        SpawnItem(position, lootItem, room);
+    }
+
 
     void Lock() { _managerMutex.lock(); }
     void Unlock() { _managerMutex.unlock(); }
@@ -517,5 +673,7 @@ private:
         return canMove;
     }
 
+
+    
 
 };

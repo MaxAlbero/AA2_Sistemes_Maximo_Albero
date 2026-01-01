@@ -1,5 +1,6 @@
 #pragma once
 #include "../NodeMap/INodeContent.h"
+#include "../Utils/ConsoleControl.h"
 #include "../NodeMap/Vector2.h"
 #include "../Utils/IDamageable.h"
 #include <mutex>

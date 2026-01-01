@@ -23,9 +23,12 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <cstdlib>
 
 int main()
 {
+    //srand(time(NULL));
+
     Game game;
     game.Start();
 

@@ -139,6 +139,7 @@
     <ClInclude Include="Game\DungeonMap.h" />
     <ClInclude Include="Game\Enemy.h" />
     <ClInclude Include="Game\EntityManager.h" />
+    <ClInclude Include="Game\Item.h" />
     <ClInclude Include="Game\Wall.h" />
     <ClInclude Include="Game\Game.h" />
     <ClInclude Include="Game\Player.h" />
