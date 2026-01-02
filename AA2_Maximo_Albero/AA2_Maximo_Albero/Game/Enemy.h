@@ -17,7 +17,7 @@ private:
     int _hp;
     int _damage;
     std::chrono::steady_clock::time_point _lastActionTime;
-    int _actionCooldownMs = 500; // Milisegundos entre acciones
+    int _actionCooldownMs = 1000; // Milisegundos entre acciones
     std::mutex _enemyMutex;
 
     // Thread de movimiento

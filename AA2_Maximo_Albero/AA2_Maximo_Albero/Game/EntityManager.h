@@ -10,6 +10,7 @@
 #include "Chest.h"
 #include "Item.h"
 #include "Player.h"
+#include "Portal.h"
 
 #include "Room.h"
 #include "Wall.h"
@@ -92,45 +93,6 @@ public:
             }
             });
     }
-
-    //void RemoveEnemy(Enemy* enemy, Room* room)
-    //{
-    //    if (enemy == nullptr || room == nullptr)
-    //        return;
-
-    //    // Detener el movimiento del enemigo
-    //    enemy->StopMovement();
-
-    //    _managerMutex.lock();
-
-    //    Vector2 enemyPos = enemy->GetPosition();
-
-    //    // Limpiar del mapa
-    //    room->GetMap()->SafePickNode(enemyPos, [](Node* node) {
-    //        if (node != nullptr)
-    //        {
-    //            node->SetContent(nullptr);
-    //        }
-    //        });
-
-    //    // Redibujar la posición
-    //    room->GetMap()->SafePickNode(enemyPos, [](Node* node) {
-    //        if (node != nullptr)
-    //        {
-    //            node->DrawContent(Vector2(0, 0));
-    //        }
-    //        });
-
-    //    // Eliminar de la lista
-    //    auto it = std::find(_enemies.begin(), _enemies.end(), enemy);
-    //    if (it != _enemies.end())
-    //    {
-    //        delete enemy;
-    //        _enemies.erase(it);
-    //    }
-
-    //    _managerMutex.unlock();
-    //}
 
     void CleanupDeadEnemies(Room* room)
     {
@@ -227,6 +189,24 @@ public:
         std::vector<Enemy*> enemiesCopy = _enemies;
         _managerMutex.unlock();
         return enemiesCopy;
+    }
+
+    // NUEVO: Método para obtener cofres
+    std::vector<Chest*> GetChests()
+    {
+        _managerMutex.lock();
+        std::vector<Chest*> chestsCopy = _chests;
+        _managerMutex.unlock();
+        return chestsCopy;
+    }
+
+    // NUEVO: Método para obtener items
+    std::vector<Item*> GetItems()
+    {
+        _managerMutex.lock();
+        std::vector<Item*> itemsCopy = _items;
+        _managerMutex.unlock();
+        return itemsCopy;
     }
 
     void ClearAllEntities()
@@ -685,6 +665,11 @@ private:
                 {
                     canMove = false;
                 }
+
+                Portal* portal = node->GetContent<Portal>();
+                if (portal != nullptr) {
+                    canMove = false;
+                }
             }
             });
 
@@ -719,6 +704,19 @@ private:
             {
                 Vector2 chestPos = chest->GetPosition();
                 if (chestPos.X == newPosition.X && chestPos.Y == newPosition.Y)
+                {
+                    canMove = false;
+                    break;
+                }
+            }
+        }
+
+        if (canMove)
+        {
+            for (Item* item : _items)
+            {
+                Vector2 itemPos = item->GetPosition();
+                if (itemPos.X == newPosition.X && itemPos.Y == newPosition.Y)
                 {
                     canMove = false;
                     break;

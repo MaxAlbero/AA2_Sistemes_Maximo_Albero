@@ -32,7 +32,7 @@ public:
     void Draw(Vector2 pos) override {
         CC::Lock();
         CC::SetPosition(pos.X, pos.Y);
-        std::cout << "P";
+        std::cout << "J";
         CC::Unlock();
     }
 
