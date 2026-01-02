@@ -10,6 +10,7 @@
 #include "Chest.h"
 #include "Item.h"
 #include "Player.h"
+#include "Portal.h"
 
 #include "Room.h"
 #include "Wall.h"
@@ -664,6 +665,11 @@ private:
                 {
                     canMove = false;
                 }
+
+                Portal* portal = node->GetContent<Portal>();
+                if (portal != nullptr) {
+                    canMove = false;
+                }
             }
             });
 
@@ -698,6 +704,19 @@ private:
             {
                 Vector2 chestPos = chest->GetPosition();
                 if (chestPos.X == newPosition.X && chestPos.Y == newPosition.Y)
+                {
+                    canMove = false;
+                    break;
+                }
+            }
+        }
+
+        if (canMove)
+        {
+            for (Item* item : _items)
+            {
+                Vector2 itemPos = item->GetPosition();
+                if (itemPos.X == newPosition.X && itemPos.Y == newPosition.Y)
                 {
                     canMove = false;
                     break;
