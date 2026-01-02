@@ -8,6 +8,7 @@ Game::Game()
     _dungeonMap = new DungeonMap();
     _inputSystem = new InputSystem();
     _entityManager = new EntityManager();
+    _spawner = new Spawner(_entityManager, 5);
     _player = nullptr;
     _playerPosition = Vector2(1, 1);
     _currentRoomIndex = 0;
@@ -21,6 +22,7 @@ Game::~Game()
     if (_player != nullptr)
         delete _player;
 
+    delete _spawner;
     delete _entityManager;
     delete _inputSystem;
     delete _dungeonMap;
@@ -43,11 +45,11 @@ void Game::InitializeDungeon()
     // Spawner algunos enemigos de prueba usando el EntityManager
     Room* currentRoom = _dungeonMap->GetActiveRoom();
 
-    _entityManager->SpawnEnemy(Vector2(15, 7), currentRoom);
-    _entityManager->SpawnEnemy(Vector2(3, 5), currentRoom);
-    _entityManager->SpawnEnemy(Vector2(12, 2), currentRoom);
+    //_entityManager->SpawnEnemy(Vector2(15, 7), currentRoom);
+    //_entityManager->SpawnEnemy(Vector2(3, 5), currentRoom);
+    //_entityManager->SpawnEnemy(Vector2(12, 2), currentRoom);
 
-    _entityManager->SpawnChest(Vector2(5, 3), currentRoom);
+    //_entityManager->SpawnChest(Vector2(5, 3), currentRoom);
 
     //_entityManager->SpawnItem(Vector2(3, 3), ItemType::COIN, currentRoom);
     //_entityManager->SpawnItem(Vector2(10, 4), ItemType::POTION, currentRoom);
@@ -114,6 +116,8 @@ void Game::Start()
         }
     );
 
+    _spawner->Start(currentRoom);
+
     std::cout << "\n\nUsa las flechas o WASD para moverte." << std::endl;
 }
 
@@ -131,6 +135,7 @@ void Game::Stop()
     _running = false;
     _inputSystem->StopListen();
     _entityManager->StopEnemyMovement();
+    _spawner->Stop();
 
     _gameMutex.unlock();
 }

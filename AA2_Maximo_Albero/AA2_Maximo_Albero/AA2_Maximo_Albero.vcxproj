@@ -131,6 +131,7 @@
     <ClCompile Include="NodeMap\Node.cpp" />
     <ClCompile Include="NodeMap\NodeMap.cpp" />
     <ClCompile Include="NodeMap\Vector2.cpp" />
+    <ClCompile Include="Game\Spawner.cpp" />
     <ClCompile Include="Utils\ConsoleControl.cpp" />
     <ClCompile Include="Utils\MessageSystem.cpp" />
   </ItemGroup>
@@ -161,6 +162,7 @@
     <ClInclude Include="NodeMap\Node.h" />
     <ClInclude Include="NodeMap\NodeMap.h" />
     <ClInclude Include="NodeMap\Vector2.h" />
+    <ClInclude Include="Game\Spawner.h" />
     <ClInclude Include="Utils\ConsoleControl.h" />
     <ClInclude Include="Utils\GameConstants.h" />
     <ClInclude Include="Utils\HideConsoleCursor.h" />

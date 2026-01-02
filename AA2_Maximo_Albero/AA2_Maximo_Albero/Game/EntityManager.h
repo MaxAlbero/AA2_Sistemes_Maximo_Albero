@@ -9,6 +9,7 @@
 #include "Enemy.h"
 #include "Chest.h"
 #include "Item.h"
+#include "Player.h"
 
 #include "Room.h"
 #include "Wall.h"
@@ -486,7 +487,7 @@ public:
     }
 
     ItemType SelectLoot() {
-        srand((unsigned int)time(NULL));
+        srand((unsigned int)time(NULL)); //this is a problem TO DO: See if I can fix it without needing to use srand in every place I make a random choice
         ItemType lootItem;
         int lootNum = rand() % 3;
 
