@@ -3,6 +3,7 @@
 #include "Player.h"
 #include "EntityManager.h"
 #include "Spawner.h"
+#include "Portal.h"
 #include "../InputSystem/InputSystem.h"
 #include <mutex>
 
@@ -36,6 +37,9 @@ private:
     void UpdatePlayerOnMap();
 
     void UpdateEnemyMovement();
+
+    void ChangeRoom(PortalDir direction);
+    PortalDir GetOppositeDirection(PortalDir dir);
 
     // Callbacks para input
     void OnMoveUp();
