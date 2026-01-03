@@ -43,6 +43,8 @@ private:
     void ChangeRoom(PortalDir direction);
     PortalDir GetOppositeDirection(PortalDir dir);
 
+    void InitializeCurrentRoom();
+
     // Callbacks para input
     void OnMoveUp();
     void OnMoveDown();

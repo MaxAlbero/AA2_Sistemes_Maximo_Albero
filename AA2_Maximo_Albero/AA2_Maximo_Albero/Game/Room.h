@@ -3,14 +3,23 @@
 #include "Wall.h"
 #include "Portal.h"
 
+#include "Enemy.h"
+#include "Chest.h"
+#include "Item.h"
+
 class Room
 {
 private:
     NodeMap* _map;
     Vector2 _size;
+    bool _initialized;
+
+    std::vector<Enemy*> _enemies;
+    std::vector<Chest*> _chests;
+    std::vector<Item*> _items;
 
 public:
-    Room(Vector2 size, Vector2 offset) : _size(size)
+    Room(Vector2 size, Vector2 offset) : _size(size), _initialized(false)
     {
         _map = new NodeMap(size, offset);
 
@@ -43,6 +52,157 @@ public:
 
     NodeMap* GetMap() { return _map; }
     Vector2 GetSize() const { return _size; }
+
+    bool IsInitialized() const { return _initialized; }
+    void SetInitialized(bool value) { _initialized = value; }
+
+    void AddEnemy(Enemy* enemy) { _enemies.push_back(enemy); }
+    void AddChest(Chest* chest) { _chests.push_back(chest); }
+    void AddItem(Item* item) { _items.push_back(item); }
+
+    void RemoveEnemy(Enemy* enemy)
+    {
+        auto it = std::find(_enemies.begin(), _enemies.end(), enemy);
+        if (it != _enemies.end())
+        {
+            _enemies.erase(it);
+        }
+    }
+
+    void RemoveChest(Chest* chest)
+    {
+        auto it = std::find(_chests.begin(), _chests.end(), chest);
+        if (it != _chests.end())
+        {
+            _chests.erase(it);
+        }
+    }
+
+    void RemoveItem(Item* item)
+    {
+        auto it = std::find(_items.begin(), _items.end(), item);
+        if (it != _items.end())
+        {
+            _items.erase(it);
+        }
+    }
+
+    std::vector<Enemy*>& GetEnemies() { return _enemies; }
+    std::vector<Chest*>& GetChests() { return _chests; }
+    std::vector<Item*>& GetItems() { return _items; }
+
+    void ActivateEntities()
+    {
+        // Colocar todas las entidades en el mapa y dibujarlas
+        for (Enemy* enemy : _enemies)
+        {
+            if (enemy != nullptr)
+            {
+                Vector2 pos = enemy->GetPosition();
+                _map->SafePickNode(pos, [enemy](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->SetContent(enemy);
+                    }
+                    });
+
+                _map->SafePickNode(pos, [](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->DrawContent(Vector2(0, 0));
+                    }
+                    });
+            }
+        }
+
+        for (Chest* chest : _chests)
+        {
+            if (chest != nullptr)
+            {
+                Vector2 pos = chest->GetPosition();
+                _map->SafePickNode(pos, [chest](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->SetContent(chest);
+                    }
+                    });
+
+                _map->SafePickNode(pos, [](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->DrawContent(Vector2(0, 0));
+                    }
+                    });
+            }
+        }
+
+        for (Item* item : _items)
+        {
+            if (item != nullptr)
+            {
+                Vector2 pos = item->GetPosition();
+                _map->SafePickNode(pos, [item](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->SetContent(item);
+                    }
+                    });
+
+                _map->SafePickNode(pos, [](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->DrawContent(Vector2(0, 0));
+                    }
+                    });
+            }
+        }
+    }
+
+    void DeactivateEntities()
+    {
+        // Quitar todas las entidades del mapa visual (pero mantenerlas en memoria)
+        for (Enemy* enemy : _enemies)
+        {
+            if (enemy != nullptr)
+            {
+                Vector2 pos = enemy->GetPosition();
+                _map->SafePickNode(pos, [](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->SetContent(nullptr);
+                    }
+                    });
+            }
+        }
+
+        for (Chest* chest : _chests)
+        {
+            if (chest != nullptr)
+            {
+                Vector2 pos = chest->GetPosition();
+                _map->SafePickNode(pos, [](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->SetContent(nullptr);
+                    }
+                    });
+            }
+        }
+
+        for (Item* item : _items)
+        {
+            if (item != nullptr)
+            {
+                Vector2 pos = item->GetPosition();
+                _map->SafePickNode(pos, [](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->SetContent(nullptr);
+                    }
+                    });
+            }
+        }
+    }
 
     void Draw()
     {

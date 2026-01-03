@@ -79,8 +79,6 @@ void Spawner::SpawnRandomEntity()
     if (spawnPosition.X == -1 && spawnPosition.Y == -1)
         return; // No se encontró posición válida
 
-    rand();
-
     // Decidir qué spawner: 0 = Enemigo, 1 = Cofre
     int entityType = rand() % 2;
 
@@ -150,8 +148,7 @@ bool Spawner::IsPositionValid(Vector2 position)
         }
         });
 
-    // TODO: También deberías verificar que no esté cerca del jugador
-    // Esto lo puedes implementar más adelante si lo necesitas
+    // TODO: También debería verificar que no esté cerca del jugador
 
     return isValid;
 }
