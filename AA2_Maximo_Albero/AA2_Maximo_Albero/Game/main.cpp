@@ -20,6 +20,7 @@
 
 #include "Game.h"
 #include "../Utils/ConsoleControl.h"
+#include "../Utils/HideConsoleCursor.h"
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -28,18 +29,14 @@
 int main()
 {
     //srand(time(NULL));
+    HideConsoleCursor();
 
     Game game;
     game.Start();
 
-    // Mantener el programa corriendo
-    // Puedes añadir una condición de salida si lo deseas
     while (true)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-        // Opcional: añadir condición de salida con ESC
-        // if (tecla ESC presionada) break;
     }
 
     game.Stop();

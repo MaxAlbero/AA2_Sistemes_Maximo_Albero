@@ -5,6 +5,7 @@
 #include "Spawner.h"
 #include "Portal.h"
 #include "../InputSystem/InputSystem.h"
+#include "UI.h"
 #include <mutex>
 
 class Game
@@ -21,6 +22,7 @@ private:
     InputSystem* _inputSystem;
     EntityManager* _entityManager;
     Spawner* _spawner;
+    UI* _ui;
     Player* _player;
     Vector2 _playerPosition;
 

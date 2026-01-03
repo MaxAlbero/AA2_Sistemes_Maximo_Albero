@@ -125,6 +125,7 @@
   <ItemGroup>
     <ClCompile Include="Game\Game.cpp" />
     <ClCompile Include="Game\main.cpp" />
+    <ClCompile Include="Game\UI.cpp" />
     <ClCompile Include="InputSystem\InputSystem.cpp" />
     <ClCompile Include="Json\ICodable.cpp" />
     <ClCompile Include="NodeMap\INodeContent.cpp" />
@@ -142,6 +143,7 @@
     <ClInclude Include="Game\EntityManager.h" />
     <ClInclude Include="Game\Item.h" />
     <ClInclude Include="Game\Portal.h" />
+    <ClInclude Include="Game\UI.h" />
     <ClInclude Include="Game\Wall.h" />
     <ClInclude Include="Game\Game.h" />
     <ClInclude Include="Game\Player.h" />
@@ -167,6 +169,8 @@
     <ClInclude Include="Utils\ConsoleControl.h" />
     <ClInclude Include="Utils\GameConstants.h" />
     <ClInclude Include="Utils\HideConsoleCursor.h" />
+    <ClInclude Include="Utils\IAttacker.h" />
+    <ClInclude Include="Utils\IDamageable.h" />
     <ClInclude Include="Utils\MessageSystem.h" />
   </ItemGroup>
   <ItemGroup>
