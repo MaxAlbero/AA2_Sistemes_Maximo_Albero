@@ -148,8 +148,7 @@ bool Spawner::IsPositionValid(Vector2 position)
         }
         });
 
-    // TODO: También deberías verificar que no esté cerca del jugador
-    // Esto lo puedes implementar más adelante si lo necesitas
+    // TODO: También debería verificar que no esté cerca del jugador
 
     return isValid;
 }

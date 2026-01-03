@@ -29,6 +29,10 @@ private:
     std::thread* _enemyMovementThread;
     std::atomic<bool> _movementActive;
 
+    Room* _currentRoom;  // AÑADIR ESTO
+    std::function<Vector2()> _getPlayerPositionCallback;  // AÑADIR ESTO
+    std::function<void(Enemy*)> _onEnemyAttackPlayer;
+
 public:
     EntityManager() : _enemyMovementThread(nullptr), _movementActive(false) {}
 
@@ -38,20 +42,30 @@ public:
         ClearAllEntities();
     }
 
+    void SetCurrentRoom(Room* room) {  // AÑADIR ESTE MÉTODO
+        _managerMutex.lock();
+        _currentRoom = room;
+        _managerMutex.unlock();
+    }
+
     // Gestión de enemigos
     void SpawnEnemy(Vector2 position, Room* room)
     {
         if (room == nullptr)
             return;
 
-        _managerMutex.lock();
-
         Enemy* enemy = new Enemy(position);
-        _enemies.push_back(enemy);
 
+        _managerMutex.lock();
+        _enemies.push_back(enemy);
         _managerMutex.unlock();
 
-        // Colocar enemigo en el mapa
+
+
+        //Añadir a la sala
+        room->AddEnemy(enemy);
+
+        // Colocar en el mapa
         room->GetMap()->SafePickNode(position, [enemy](Node* node) {
             if (node != nullptr)
             {
@@ -59,7 +73,6 @@ public:
             }
             });
 
-        // Dibujar el enemigo
         room->GetMap()->SafePickNode(position, [](Node* node) {
             if (node != nullptr)
             {
@@ -67,22 +80,27 @@ public:
             }
             });
 
-        // Iniciar movimiento del enemigo
         enemy->StartMovement();
     }
 
-    void SpawnChest(Vector2 position, Room* room) {
+    void SpawnChest(Vector2 position, Room* room)
+    {
         if (room == nullptr)
             return;
 
-        _managerMutex.lock();
         Chest* chest = new Chest(position);
-        _chests.push_back(chest);
 
+
+        _managerMutex.lock();
+        _chests.push_back(chest);
         _managerMutex.unlock();
 
+        // Añadir a la sala
+        room->AddChest(chest);
+
         room->GetMap()->SafePickNode(position, [chest](Node* node) {
-            if (node != nullptr) {
+            if (node != nullptr)
+            {
                 node->SetContent(chest);
             }
             });
@@ -100,9 +118,9 @@ public:
         if (room == nullptr)
             return;
 
-        _managerMutex.lock();
+        std::vector<Enemy*>& enemies = room->GetEnemies();
 
-        for (auto it = _enemies.begin(); it != _enemies.end();)
+        for (auto it = enemies.begin(); it != enemies.end();)
         {
             Enemy* enemy = *it;
             if (!enemy->IsAlive())
@@ -110,10 +128,8 @@ public:
                 enemy->StopMovement();
                 Vector2 enemyPos = enemy->GetPosition();
 
-                //Here the the loot the enemy is going to drop is selected randomly
                 ItemType loot = SelectLoot();
 
-                // Limpiar del mapa
                 room->GetMap()->SafePickNode(enemyPos, [](Node* node) {
                     if (node != nullptr)
                     {
@@ -121,7 +137,6 @@ public:
                     }
                     });
 
-                // Redibujar la posición (ahora vacía)
                 room->GetMap()->SafePickNode(enemyPos, [](Node* node) {
                     if (node != nullptr)
                     {
@@ -129,21 +144,24 @@ public:
                     }
                     });
 
-                delete enemy;
-                it = _enemies.erase(it);
-
-                // Dropear loot en la misma posición
-                _managerMutex.unlock();
-                DropLoot(enemyPos, loot, room);
                 _managerMutex.lock();
+                auto globalIt = std::find(_enemies.begin(), _enemies.end(), enemy);
+                if (globalIt != _enemies.end())
+                {
+                    _enemies.erase(globalIt);
+                }
+                _managerMutex.unlock();
+
+                delete enemy;
+                it = enemies.erase(it);
+
+                DropLoot(enemyPos, loot, room);
             }
             else
             {
                 ++it;
             }
         }
-
-        _managerMutex.unlock();
     }
 
     bool IsPositionOccupiedByEnemy(Vector2 position)
@@ -165,25 +183,23 @@ public:
         return occupied;
     }
 
-    Enemy* GetEnemyAtPosition(Vector2 position)
+    Enemy* GetEnemyAtPosition(Vector2 position, Room* room)
     {
-        _managerMutex.lock();
+        if (room == nullptr)
+            return nullptr;
 
-        Enemy* foundEnemy = nullptr;
-        for (Enemy* enemy : _enemies)
+        for (Enemy* enemy : room->GetEnemies())
         {
             Vector2 enemyPos = enemy->GetPosition();
             if (enemyPos.X == position.X && enemyPos.Y == position.Y)
             {
-                foundEnemy = enemy;
-                break;
+                return enemy;
             }
         }
-
-        _managerMutex.unlock();
-        return foundEnemy;
+        return nullptr;
     }
 
+    //Methods to get entities
     std::vector<Enemy*> GetEnemies()
     {
         _managerMutex.lock();
@@ -192,7 +208,6 @@ public:
         return enemiesCopy;
     }
 
-    // NUEVO: Método para obtener cofres
     std::vector<Chest*> GetChests()
     {
         _managerMutex.lock();
@@ -201,7 +216,6 @@ public:
         return chestsCopy;
     }
 
-    // NUEVO: Método para obtener items
     std::vector<Item*> GetItems()
     {
         _managerMutex.lock();
@@ -243,14 +257,20 @@ public:
         return count;
     }
 
-    // Sistema de movimiento de enemigos - SOLO ESTA VERSIÓN
+    // Sistema de movimiento de enemigos
     void StartEnemyMovement(Room* room, std::function<Vector2()> getPlayerPositionCallback, std::function<void(Enemy*)> onEnemyAttackPlayer)
     {
         if (_movementActive)
             return;
 
+        _managerMutex.lock();
+        _currentRoom = room;
+        _getPlayerPositionCallback = getPlayerPositionCallback;
+        _onEnemyAttackPlayer = onEnemyAttackPlayer;
+        _managerMutex.unlock();
+
         _movementActive = true;
-        _enemyMovementThread = new std::thread(&EntityManager::EnemyMovementLoop, this, room, getPlayerPositionCallback, onEnemyAttackPlayer);
+        _enemyMovementThread = new std::thread(&EntityManager::EnemyMovementLoop, this);
     }
 
     void StopEnemyMovement()
@@ -289,23 +309,20 @@ public:
         return occupied;
     }
 
-    Chest* GetChestAtPosition(Vector2 position)
+    Chest* GetChestAtPosition(Vector2 position, Room* room)
     {
-        _managerMutex.lock();
+        if (room == nullptr)
+            return nullptr;
 
-        Chest* foundChest = nullptr;
-        for (Chest* chest : _chests)
+        for (Chest* chest : room->GetChests())
         {
             Vector2 chestPos = chest->GetPosition();
             if (chestPos.X == position.X && chestPos.Y == position.Y)
             {
-                foundChest = chest;
-                break;
+                return chest;
             }
         }
-
-        _managerMutex.unlock();
-        return foundChest;
+        return nullptr;
     }
 
     void CleanupBrokenChests(Room* room)
@@ -313,19 +330,18 @@ public:
         if (room == nullptr)
             return;
 
-        _managerMutex.lock();
+        std::vector<Chest*>& chests = room->GetChests();
 
-        for (auto it = _chests.begin(); it != _chests.end();)
+        for (auto it = chests.begin(); it != chests.end();)
         {
             Chest* chest = *it;
             if (chest->IsBroken())
             {
+
                 Vector2 chestPos = chest->GetPosition();
 
-                // Generar loot
                 ItemType loot = SelectLoot();
 
-                // Limpiar del mapa
                 room->GetMap()->SafePickNode(chestPos, [](Node* node) {
                     if (node != nullptr)
                     {
@@ -333,7 +349,6 @@ public:
                     }
                     });
 
-                // Redibujar la posición (ahora vacía)
                 room->GetMap()->SafePickNode(chestPos, [](Node* node) {
                     if (node != nullptr)
                     {
@@ -341,21 +356,24 @@ public:
                     }
                     });
 
-                delete chest;
-                it = _chests.erase(it);
-
-                // Dropear loot en la misma posición
-                _managerMutex.unlock();
-                DropLoot(chestPos, loot, room);
                 _managerMutex.lock();
+                auto globalIt = std::find(_chests.begin(), _chests.end(), chest);
+                if (globalIt != _chests.end())
+                {
+                    _chests.erase(globalIt);
+                }
+                _managerMutex.unlock();
+
+                delete chest;
+                it = chests.erase(it);
+
+                DropLoot(chestPos, loot, room);
             }
             else
             {
                 ++it;
             }
         }
-
-        _managerMutex.unlock();
     }
 
     int GetChestCount()
@@ -371,12 +389,15 @@ public:
         if (room == nullptr)
             return;
 
-        _managerMutex.lock();
         Item* item = new Item(position, type);
+
+        _managerMutex.lock();
         _items.push_back(item);
         _managerMutex.unlock();
 
-        // Colocar item en el mapa
+        // Añadir a la sala
+        room->AddItem(item);
+
         room->GetMap()->SafePickNode(position, [item](Node* node) {
             if (node != nullptr)
             {
@@ -384,7 +405,6 @@ public:
             }
             });
 
-        // Dibujar el item
         room->GetMap()->SafePickNode(position, [](Node* node) {
             if (node != nullptr)
             {
@@ -393,59 +413,67 @@ public:
             });
     }
 
-    Item* GetItemAtPosition(Vector2 position)
+    Item* GetItemAtPosition(Vector2 position, Room* room)
     {
-        _managerMutex.lock();
+        if (room == nullptr)
+            return nullptr;
 
-        Item* foundItem = nullptr;
-        for (Item* item : _items)
+        for (Item* item : room->GetItems())
         {
             Vector2 itemPos = item->GetPosition();
             if (itemPos.X == position.X && itemPos.Y == position.Y)
             {
-                foundItem = item;
-                break;
+                return item;
             }
         }
-
-        _managerMutex.unlock();
-        return foundItem;
+        return nullptr;
     }
-
-    void RemoveItem(Item* item, Room* room)
+    
+    //if something is going to give problems, probably it's going to be this
+    void RemoveItem(Item* itemToRemove, Room* room)
     {
-        if (item == nullptr || room == nullptr)
+        if (room == nullptr || itemToRemove == nullptr)
             return;
 
-        _managerMutex.lock();
+        std::vector<Item*>& items = room->GetItems();
 
-        Vector2 itemPos = item->GetPosition();
-
-        // Limpiar del mapa
-        room->GetMap()->SafePickNode(itemPos, [](Node* node) {
-            if (node != nullptr)
-            {
-                node->SetContent(nullptr);
-            }
-            });
-
-        // Redibujar la posición
-        room->GetMap()->SafePickNode(itemPos, [](Node* node) {
-            if (node != nullptr)
-            {
-                node->DrawContent(Vector2(0, 0));
-            }
-            });
-
-        // Eliminar de la lista
-        auto it = std::find(_items.begin(), _items.end(), item);
-        if (it != _items.end())
+        for (auto it = items.begin(); it != items.end(); ++it)
         {
-            delete item;
-            _items.erase(it);
-        }
+            if (*it == itemToRemove)
+            {
+                Vector2 itemPos = itemToRemove->GetPosition();
 
-        _managerMutex.unlock();
+                // Limpiar del mapa
+                room->GetMap()->SafePickNode(itemPos, [](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->SetContent(nullptr);
+                    }
+                    });
+
+                room->GetMap()->SafePickNode(itemPos, [](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->DrawContent(Vector2(0, 0));
+                    }
+                    });
+
+                // Eliminar de la lista global del EntityManager
+                _managerMutex.lock();
+                auto globalIt = std::find(_items.begin(), _items.end(), itemToRemove);
+                if (globalIt != _items.end())
+                {
+                    _items.erase(globalIt);
+                }
+                _managerMutex.unlock();
+
+                // Eliminar de la lista de la sala
+                delete itemToRemove;
+                items.erase(it);
+
+                break; //Salir del bucle después de encontrar el item
+            }
+        }
     }
 
     bool IsPositionOccupiedByItem(Vector2 position)
@@ -502,27 +530,25 @@ public:
         if (room == nullptr || room->IsInitialized())
             return;
 
-        // 1-2 entidades
         int entityCount = 3; //1 + (rand() % 2);  // Genera 1 o 2
 
         for (int i = 0; i < entityCount; i++)
         {
-            // Buscar posición válida
             Vector2 spawnPos = FindValidSpawnPosition(room);
 
             if (spawnPos.X == -1)
                 continue;  // No se encontró posición válida
 
-            // Decidir qué spawnear (0=enemigo, 1=cofre)
+
             int entityType = rand() % 2;
 
-            if (entityType == 0)
-            {
+            switch (entityType) {
+            case 0:
                 SpawnEnemy(spawnPos, room);
-            }
-            else
-            {
+                break;
+            case 1:
                 SpawnChest(spawnPos, room);
+                break;
             }
         }
 
@@ -602,84 +628,104 @@ private:
         return (distX + distY) == 1;
     }
 
-    void EnemyMovementLoop(Room* room,
-        std::function<Vector2()> getPlayerPositionCallback,
-        std::function<void(Enemy*)> onEnemyAttackPlayer)
-    {
-        while (_movementActive)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+   private:
+       void EnemyMovementLoop()  //  Sin parámetros ahora
+       {
+           while (_movementActive)
+           {
+               std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-            if (!_movementActive)
-                break;
+               if (!_movementActive)
+                   break;
 
-            _managerMutex.lock();
-            std::vector<Enemy*> enemiesCopy = _enemies;
-            _managerMutex.unlock();
+               // Obtener sala actual y callbacks de forma segura
+               _managerMutex.lock();
+               Room* room = _currentRoom;
+               auto getPlayerPos = _getPlayerPositionCallback;
+               auto onAttack = _onEnemyAttackPlayer;
+               std::vector<Enemy*> enemiesCopy = _enemies;
+               _managerMutex.unlock();
 
-            // Obtener la posición actual del jugador
-            Vector2 currentPlayerPosition = getPlayerPositionCallback();
+               if (room == nullptr)
+                   continue;
 
-            for (Enemy* enemy : enemiesCopy)
-            {
-                if (!enemy->IsAlive() || !enemy->CanPerformAction())
-                    continue;
+               // Obtener la posición actual del jugador
+               Vector2 currentPlayerPosition = getPlayerPos();
 
-                Vector2 currentPos = enemy->GetPosition();
+               std::vector<Enemy*>& enemies = room->GetEnemies();
 
-                if (IsAdjacent(currentPos, currentPlayerPosition))
-                {
-                    // El jugador está adyacente - ATACAR
-                    onEnemyAttackPlayer(enemy);
-                    enemy->UpdateActionTime();
-                    continue; // No moverse, solo atacar
-                }
+               for (Enemy* enemy : enemies)  // Usar enemies de la sala actual
+               {
+                   // Verificar si el enemigo está en la lista global
+                   bool isInGlobalList = false;
+                   _managerMutex.lock();
+                   for (Enemy* globalEnemy : _enemies)
+                   {
+                       if (globalEnemy == enemy)
+                       {
+                           isInGlobalList = true;
+                           break;
+                       }
+                   }
+                   _managerMutex.unlock();
 
-                Vector2 direction = enemy->GetRandomDirection();
-                Vector2 newPos = currentPos + direction;
+                   if (!isInGlobalList || !enemy->IsAlive() || !enemy->CanPerformAction())
+                       continue;
 
-                // Verificar si la nueva posición es válida (ahora con la posición actualizada del jugador)
-                if (CanEnemyMoveTo(newPos, currentPos, room, currentPlayerPosition))
-                {
-                    // Limpiar posición anterior
-                    room->GetMap()->SafePickNode(currentPos, [](Node* node) {
-                        if (node != nullptr)
-                        {
-                            node->SetContent(nullptr);
-                        }
-                        });
+                   Vector2 currentPos = enemy->GetPosition();
 
-                    // Actualizar posición del enemigo
-                    enemy->SetPosition(newPos);
+                   if (IsAdjacent(currentPos, currentPlayerPosition))
+                   {
+                       // El jugador está adyacente - ATACAR
+                       onAttack(enemy);
+                       enemy->UpdateActionTime();
+                       continue;
+                   }
 
-                    // Colocar enemigo en nueva posición
-                    room->GetMap()->SafePickNode(newPos, [enemy](Node* node) {
-                        if (node != nullptr)
-                        {
-                            node->SetContent(enemy);
-                        }
-                        });
+                   Vector2 direction = enemy->GetRandomDirection();
+                   Vector2 newPos = currentPos + direction;
 
-                    // Redibujar ambas posiciones
-                    room->GetMap()->SafePickNode(currentPos, [](Node* node) {
-                        if (node != nullptr)
-                        {
-                            node->DrawContent(Vector2(0, 0));
-                        }
-                        });
+                   if (CanEnemyMoveTo(newPos, currentPos, room, currentPlayerPosition))
+                   {
+                       // Limpiar posición anterior
+                       room->GetMap()->SafePickNode(currentPos, [](Node* node) {
+                           if (node != nullptr)
+                           {
+                               node->SetContent(nullptr);
+                           }
+                           });
 
-                    room->GetMap()->SafePickNode(newPos, [](Node* node) {
-                        if (node != nullptr)
-                        {
-                            node->DrawContent(Vector2(0, 0));
-                        }
-                        });
+                       // Actualizar posición del enemigo
+                       enemy->SetPosition(newPos);
 
-                    enemy->UpdateActionTime();
-                }
-            }
-        }
-    }
+                       // Colocar enemigo en nueva posición
+                       room->GetMap()->SafePickNode(newPos, [enemy](Node* node) {
+                           if (node != nullptr)
+                           {
+                               node->SetContent(enemy);
+                           }
+                           });
+
+                       // Redibujar ambas posiciones
+                       room->GetMap()->SafePickNode(currentPos, [](Node* node) {
+                           if (node != nullptr)
+                           {
+                               node->DrawContent(Vector2(0, 0));
+                           }
+                           });
+
+                       room->GetMap()->SafePickNode(newPos, [](Node* node) {
+                           if (node != nullptr)
+                           {
+                               node->DrawContent(Vector2(0, 0));
+                           }
+                           });
+
+                       enemy->UpdateActionTime();
+                   }
+               }
+           }
+       }
 
     bool CanEnemyMoveTo(Vector2 newPosition, Vector2 currentPosition, Room* room, Vector2 playerPosition)
     {
