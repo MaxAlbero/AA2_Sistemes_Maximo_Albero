@@ -59,6 +59,19 @@ void Game::InitializeDungeon()
     _ui->SetMapSize(Vector2(20, 10));
 }
 
+void Game::InitializeCurrentRoom()
+{
+    Room* currentRoom = _dungeonMap->GetActiveRoom();
+    if (currentRoom == nullptr)
+        return;
+
+    int currentX = _dungeonMap->GetCurrentX();
+    int currentY = _dungeonMap->GetCurrentY();
+
+    // Solo inicializar si no se ha inicializado antes
+    _entityManager->InitializeRoomEntities(currentRoom, currentX, currentY);
+}
+
 void Game::Start()
 {
     srand((unsigned int)time(NULL));
@@ -121,9 +134,11 @@ void Game::Start()
         }
     );
 
+    InitializeCurrentRoom();
+
     _spawner->Start(currentRoom);
 
-    std::cout << "\n\nUsa las flechas o WASD para moverte." << std::endl;
+
 }
 
    
@@ -498,6 +513,8 @@ void Game::ChangeRoom(PortalDir direction)
         // Redibujar toda la sala
         CC::Clear();
         DrawCurrentRoom();
+
+        InitializeCurrentRoom();
 
         // Reiniciar enemigos y spawner en la nueva sala
         _entityManager->StartEnemyMovement(

@@ -55,6 +55,10 @@ void UI::DrawSidebar()
     y = BOTTOM_UI_TEXT_AREA;
 
     // Leyenda
+
+    CC::SetPosition(0, y + 5);
+    std::cout << "\n\nUsa las flechas o WASD para moverte." << std::endl;
+
     CC::SetPosition(xOffset, y);
     std::cout << "# = Pared  J = Jugador  E = Enemigo";
     CC::SetPosition(xOffset, y + 1);

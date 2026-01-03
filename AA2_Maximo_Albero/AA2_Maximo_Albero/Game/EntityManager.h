@@ -15,6 +15,7 @@
 #include "Room.h"
 #include "Wall.h"
 
+
 class EntityManager
 {
 private:
@@ -496,6 +497,37 @@ public:
         SpawnItem(position, lootItem, room);
     }
 
+    void InitializeRoomEntities(Room* room, int roomX, int roomY)
+    {
+        if (room == nullptr || room->IsInitialized())
+            return;
+
+        // 1-2 entidades
+        int entityCount = 3; //1 + (rand() % 2);  // Genera 1 o 2
+
+        for (int i = 0; i < entityCount; i++)
+        {
+            // Buscar posición válida
+            Vector2 spawnPos = FindValidSpawnPosition(room);
+
+            if (spawnPos.X == -1)
+                continue;  // No se encontró posición válida
+
+            // Decidir qué spawnear (0=enemigo, 1=cofre)
+            int entityType = rand() % 2;
+
+            if (entityType == 0)
+            {
+                SpawnEnemy(spawnPos, room);
+            }
+            else
+            {
+                SpawnChest(spawnPos, room);
+            }
+        }
+
+        room->SetInitialized(true);
+    }
 
     bool TryAttackEnemyAt(Vector2 position, Player* attacker, Room* room)
     {
@@ -729,7 +761,37 @@ private:
         return canMove;
     }
 
+    Vector2 FindValidSpawnPosition(Room* room)
+    {
+        if (room == nullptr)
+            return Vector2(-1, -1);
 
+        Vector2 roomSize = room->GetSize();
+
+        // Intentar hasta 20 veces encontrar una posición válida
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            // Generar posición aleatoria evitando bordes (paredes)
+            int randomX = 2 + (rand() % (roomSize.X - 4));
+            int randomY = 2 + (rand() % (roomSize.Y - 4));
+            Vector2 pos(randomX, randomY);
+
+            bool isValid = true;
+
+            // Verificar que no haya contenido en esa posición
+            room->GetMap()->SafePickNode(pos, [&](Node* node) {
+                if (node != nullptr && node->GetContent() != nullptr)
+                {
+                    isValid = false;
+                }
+                });
+
+            if (isValid)
+                return pos;
+        }
+
+        return Vector2(-1, -1);
+    }
     
 
 };

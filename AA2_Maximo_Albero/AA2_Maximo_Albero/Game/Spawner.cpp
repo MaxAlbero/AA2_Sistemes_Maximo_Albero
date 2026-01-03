@@ -79,8 +79,6 @@ void Spawner::SpawnRandomEntity()
     if (spawnPosition.X == -1 && spawnPosition.Y == -1)
         return; // No se encontró posición válida
 
-    rand();
-
     // Decidir qué spawner: 0 = Enemigo, 1 = Cofre
     int entityType = rand() % 2;
 

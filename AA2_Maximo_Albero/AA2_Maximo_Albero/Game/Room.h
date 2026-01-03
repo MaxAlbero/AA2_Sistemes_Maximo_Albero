@@ -8,9 +8,10 @@ class Room
 private:
     NodeMap* _map;
     Vector2 _size;
+    bool _initialized;
 
 public:
-    Room(Vector2 size, Vector2 offset) : _size(size)
+    Room(Vector2 size, Vector2 offset) : _size(size), _initialized(false)
     {
         _map = new NodeMap(size, offset);
 
@@ -43,6 +44,9 @@ public:
 
     NodeMap* GetMap() { return _map; }
     Vector2 GetSize() const { return _size; }
+
+    bool IsInitialized() const { return _initialized; }
+    void SetInitialized(bool value) { _initialized = value; }
 
     void Draw()
     {
