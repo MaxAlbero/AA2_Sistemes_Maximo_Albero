@@ -9,6 +9,7 @@ Game::Game()
     _inputSystem = new InputSystem();
     _entityManager = new EntityManager();
     _spawner = new Spawner(_entityManager, 5);
+    _ui = new UI();
     _player = nullptr;
     _playerPosition = Vector2(1, 1);
     _currentRoomIndex = 0;
@@ -22,6 +23,7 @@ Game::~Game()
     if (_player != nullptr)
         delete _player;
 
+    delete _ui;
     delete _spawner;
     delete _entityManager;
     delete _inputSystem;
@@ -31,9 +33,6 @@ Game::~Game()
 
 void Game::InitializeDungeon()
 {
-    // Crear un mundo de 3x3 salas
-    //_dungeonMap = new DungeonMap(3, 3);
-
     Vector2 roomSize(20, 10);
 
     // Crear las 9 salas
@@ -56,6 +55,8 @@ void Game::InitializeDungeon()
 
     // Colocar al jugador en el mapa
     UpdatePlayerOnMap();
+
+    _ui->SetMapSize(Vector2(20, 10));
 }
 
 void Game::Start()
@@ -94,6 +95,8 @@ void Game::Start()
     // Limpiar pantalla y dibujar el mapa inicial
     CC::Clear();
     DrawCurrentRoom();
+
+    _ui->Start(_player);
 
     // Iniciar el sistema de input en un thread separado
     _inputSystem->StartListen();
@@ -138,6 +141,7 @@ void Game::Stop()
     _inputSystem->StopListen();
     _entityManager->StopEnemyMovement();
     _spawner->Stop();
+    _ui->Stop();
 
     _gameMutex.unlock();
 }
