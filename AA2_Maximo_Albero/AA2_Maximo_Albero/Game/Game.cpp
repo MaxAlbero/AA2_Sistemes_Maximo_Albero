@@ -5,15 +5,17 @@
 
 Game::Game()
 {
-    _dungeonMap = new DungeonMap(3,3);
+    _dungeonMap = new DungeonMap(3, 3);
     _inputSystem = new InputSystem();
     _entityManager = new EntityManager();
-    _spawner = new Spawner(_entityManager, 5);
+    _spawner = new Spawner(_entityManager, 10);
     _ui = new UI();
     _player = nullptr;
     _playerPosition = Vector2(1, 1);
     _currentRoomIndex = 0;
     _running = false;
+
+    _saveManager = new SaveManager("savegame.json", 5); // Autoguardado cada 5 segundos
 }
 
 Game::~Game()
@@ -23,40 +25,12 @@ Game::~Game()
     if (_player != nullptr)
         delete _player;
 
+    delete _saveManager;
     delete _ui;
     delete _spawner;
     delete _entityManager;
     delete _inputSystem;
     delete _dungeonMap;
-}
-
-
-void Game::InitializeDungeon()
-{
-    Vector2 roomSize(20, 10);
-
-    // Crear las 9 salas
-    for (int y = 0; y < 3; y++)
-    {
-        for (int x = 0; x < 3; x++)
-        {
-            Room* room = new Room(roomSize, Vector2(0, 0));
-            room->GeneratePortals(x, y, 3, 3);
-            _dungeonMap->SetRoom(x, y, room);
-        }
-    }
-
-    // Empezar en el centro (1, 1)
-    _dungeonMap->SetActiveRoom(1, 1);
-    _playerPosition = Vector2(1, 1);
-
-    // Crear el jugador
-    _player = new Player(_playerPosition);
-
-    // Colocar al jugador en el mapa
-    UpdatePlayerOnMap();
-
-    _ui->SetMapSize(Vector2(20, 10));
 }
 
 void Game::InitializeCurrentRoom()
@@ -87,7 +61,103 @@ void Game::Start()
     _running = true;
 
     // Inicializar el mapa
-    InitializeDungeon();
+    Vector2 roomSize(20, 10);
+
+    // Crear las 9 salas
+    for (int y = 0; y < 3; y++)
+    {
+        for (int x = 0; x < 3; x++)
+        {
+            Room* room = new Room(roomSize, Vector2(0, 0));
+            room->GeneratePortals(x, y, 3, 3);
+            _dungeonMap->SetRoom(x, y, room);
+        }
+    }
+
+    // INTENTAR CARGAR PARTIDA GUARDADA
+    bool loadedGame = false;
+    if (_saveManager->SaveFileExists())
+    {
+        std::cout << "Partida guardada encontrada. Cargando..." << std::endl;
+
+        // Crear jugador temporal
+        _player = new Player(Vector2(0, 0));
+
+        if (_saveManager->LoadGame(_dungeonMap, _player, _entityManager))
+        {
+            // Después de LoadGame, el DungeonMap ya tiene la sala correcta establecida
+            // Ahora obtén la posición del jugador
+            _playerPosition = _player->GetPosition();
+
+            std::cout << " DEBUG - Sala activa después de cargar: ("
+                << _dungeonMap->GetCurrentX() << ", "
+                << _dungeonMap->GetCurrentY() << ")" << std::endl;
+            std::cout << " DEBUG - Posición del jugador: ("
+                << _playerPosition.X << ", " << _playerPosition.Y << ")" << std::endl;
+
+            // Activar entidades de la sala actual (que ahora es la correcta)
+            Room* currentRoom = _dungeonMap->GetActiveRoom();
+            if (currentRoom != nullptr)
+            {
+                currentRoom->ActivateEntities();
+
+                // Reactivar movimiento de enemigos
+                for (Enemy* enemy : currentRoom->GetEnemies())
+                {
+                    if (enemy != nullptr)
+                    {
+                        enemy->StartMovement();
+                    }
+                }
+
+                // Colocar jugador en el mapa
+                currentRoom->GetMap()->SafePickNode(_playerPosition, [this](Node* node) {
+                    if (node != nullptr)
+                    {
+                        node->SetContent(this->_player);
+                    }
+                    });
+            }
+
+            loadedGame = true;
+            std::cout << " Partida cargada exitosamente en sala ("
+                << _dungeonMap->GetCurrentX() << ", "
+                << _dungeonMap->GetCurrentY() << "), posición jugador ("
+                << _playerPosition.X << ", " << _playerPosition.Y << ")" << std::endl;
+        }
+        else
+        {
+            std::cerr << " Error al cargar la partida. Iniciando nueva partida..." << std::endl;
+            delete _player;
+            _player = nullptr;
+        }
+    }
+
+    // Si no se cargó, crear nueva partida
+    if (!loadedGame)
+    {
+        std::cout << "Iniciando nueva partida..." << std::endl;
+
+        // AHORA SÍ establece la sala inicial para nueva partida
+        _dungeonMap->SetActiveRoom(1, 1);
+
+        _playerPosition = Vector2(10, 5);
+        _player = new Player(_playerPosition);
+
+        // Colocar al jugador en el mapa
+        Room* currentRoom = _dungeonMap->GetActiveRoom();
+        if (currentRoom != nullptr)
+        {
+            currentRoom->GetMap()->SafePickNode(_playerPosition, [this](Node* node) {
+                if (node != nullptr)
+                {
+                    node->SetContent(this->_player);
+                }
+                });
+        }
+    }
+
+    _ui->SetMapSize(Vector2(20, 10));
 
     // Registrar los listeners de input
     _inputSystem->AddListener(K_W, [this]() { this->OnMoveUp(); });
@@ -102,7 +172,6 @@ void Game::Start()
         }
         });
 
-
     _gameMutex.unlock();
 
     // Limpiar pantalla y dibujar el mapa inicial
@@ -111,21 +180,21 @@ void Game::Start()
 
     _ui->Start(_player);
 
-    // Iniciar el sistema de input en un thread separado
+    // Iniciar el sistema de input
     _inputSystem->StartListen();
 
-    // Iniciar movimiento de enemigos con callback para obtener la posición del jugador
+    // Obtener la sala actual DESPUÉS de todo (sea cargada o nueva)
     Room* currentRoom = _dungeonMap->GetActiveRoom();
+
+    // Iniciar movimiento de enemigos
     _entityManager->StartEnemyMovement(
         currentRoom,
-        // Callback 1: Obtener posición del jugador
         [this]() {
             this->_gameMutex.lock();
             Vector2 pos = this->_playerPosition;
             this->_gameMutex.unlock();
             return pos;
         },
-        // Callback 2: Cuando un enemigo ataca al jugador
         [this](Enemy* enemy) {
             if (enemy != nullptr && this->_player != nullptr)
             {
@@ -134,11 +203,16 @@ void Game::Start()
         }
     );
 
-    InitializeCurrentRoom();
+    // Solo inicializar la sala actual si NO se cargó una partida
+    if (!loadedGame)
+    {
+        InitializeCurrentRoom();
+    }
 
     _spawner->Start(currentRoom);
 
-
+    // INICIAR AUTOGUARDADO
+    _saveManager->StartAutoSave(_dungeonMap, _player, _entityManager);
 }
 
    
@@ -153,6 +227,10 @@ void Game::Stop()
     }
 
     _running = false;
+
+    // Detener autoguardado PRIMERO
+    _saveManager->StopAutoSave();
+
     _inputSystem->StopListen();
     _entityManager->StopEnemyMovement();
     _spawner->Stop();
@@ -160,6 +238,7 @@ void Game::Stop()
 
     _gameMutex.unlock();
 }
+
 
 void Game::DrawCurrentRoom()
 {
@@ -360,6 +439,12 @@ void Game::MovePlayer(Vector2 direction)
         });
 
     _playerPosition = newPosition;
+
+    if (_player != nullptr)
+    {
+        _player->SetPosition(_playerPosition);
+    }
+
     UpdatePlayerOnMap();
 
     currentRoom->GetMap()->SafePickNode(oldPosition, [](Node* node) {
@@ -450,6 +535,11 @@ void Game::ChangeRoom(PortalDir direction)
     {
         PortalDir oppositeDir = GetOppositeDirection(direction);
         _playerPosition = newRoom->GetSpawnPositionFromPortal(oppositeDir);
+
+        if (_player != nullptr)
+        {
+            _player->SetPosition(_playerPosition);  // IMPORTANTE
+        }
 
         //Activar entidades de la nueva sala
         newRoom->ActivateEntities();

@@ -25,6 +25,8 @@ private:
     std::mutex _playerMutex;
 
 public:
+    Player() : Player(Vector2(0, 0)) {}
+
     Player(Vector2 startPosition)
         : _position(startPosition), _hp(50), _maxHp(50), _coins(0), _potionCount(1), _weapon(0)
     {
@@ -38,7 +40,12 @@ public:
         CC::Unlock();
     }
 
-    Vector2 GetPosition() const { return _position; }
+    Vector2 GetPosition() {
+        _playerMutex.lock();
+        Vector2 pos = _position;
+        _playerMutex.unlock();
+        return pos;
+    }
     void SetPosition(Vector2 newPos) { _position = newPos; }
 
     bool CanPerformAction()

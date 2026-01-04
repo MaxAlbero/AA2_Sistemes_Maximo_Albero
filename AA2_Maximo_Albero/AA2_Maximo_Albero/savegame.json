@@ -1,0 +1,72 @@
+{
+   "currentX" : 1,
+   "currentY" : 1,
+   "player" : {
+      "ICodableType" : "class Player",
+      "coins" : 10,
+      "hp" : 30,
+      "maxHp" : 50,
+      "posX" : 18,
+      "posY" : 5,
+      "potions" : 1,
+      "weapon" : 1
+   },
+   "rooms" : {
+      "1" : {
+         "1" : {
+            "ICodableType" : "class Room",
+            "chests" : [
+               {
+                  "ICodableType" : "class Chest",
+                  "broken" : false,
+                  "hp" : 20,
+                  "posX" : 2,
+                  "posY" : 2
+               }
+            ],
+            "enemies" : [
+               {
+                  "ICodableType" : "class Enemy",
+                  "damage" : 10,
+                  "hp" : 30,
+                  "posX" : 6,
+                  "posY" : 3
+               }
+            ],
+            "initialized" : true,
+            "items" : []
+         },
+         "2" : {
+            "ICodableType" : "class Room",
+            "chests" : [],
+            "enemies" : [
+               {
+                  "ICodableType" : "class Enemy",
+                  "damage" : 10,
+                  "hp" : 30,
+                  "posX" : 11,
+                  "posY" : 7
+               },
+               {
+                  "ICodableType" : "class Enemy",
+                  "damage" : 10,
+                  "hp" : 30,
+                  "posX" : 6,
+                  "posY" : 2
+               }
+            ],
+            "initialized" : true,
+            "items" : [
+               {
+                  "ICodableType" : "class Item",
+                  "posX" : 5,
+                  "posY" : 8,
+                  "type" : 1
+               }
+            ]
+         }
+      }
+   },
+   "worldHeight" : 3,
+   "worldWidth" : 3
+}

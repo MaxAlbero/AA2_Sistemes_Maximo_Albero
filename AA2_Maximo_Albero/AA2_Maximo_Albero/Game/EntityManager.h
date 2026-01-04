@@ -615,7 +615,55 @@ public:
     void Lock() { _managerMutex.lock(); }
     void Unlock() { _managerMutex.unlock(); }
 
+    void RegisterLoadedEntities(Room* room)
+    {
+        if (room == nullptr)
+            return;
 
+        _managerMutex.lock();
+
+        // Registrar enemigos
+        for (Enemy* enemy : room->GetEnemies())
+        {
+            if (enemy != nullptr)
+            {
+                // Añadir al vector global si no está ya
+                auto it = std::find(_enemies.begin(), _enemies.end(), enemy);
+                if (it == _enemies.end())
+                {
+                    _enemies.push_back(enemy);
+                }
+            }
+        }
+
+        // Registrar cofres
+        for (Chest* chest : room->GetChests())
+        {
+            if (chest != nullptr)
+            {
+                auto it = std::find(_chests.begin(), _chests.end(), chest);
+                if (it == _chests.end())
+                {
+                    _chests.push_back(chest);
+                }
+            }
+        }
+
+        // Registrar items
+        for (Item* item : room->GetItems())
+        {
+            if (item != nullptr)
+            {
+                auto it = std::find(_items.begin(), _items.end(), item);
+                if (it == _items.end())
+                {
+                    _items.push_back(item);
+                }
+            }
+        }
+
+        _managerMutex.unlock();
+    }
 
 private:
     bool IsAdjacent(Vector2 pos1, Vector2 pos2)
@@ -628,7 +676,6 @@ private:
         return (distX + distY) == 1;
     }
 
-   private:
        void EnemyMovementLoop()  //  Sin parámetros ahora
        {
            while (_movementActive)
@@ -839,5 +886,6 @@ private:
         return Vector2(-1, -1);
     }
     
+
 
 };

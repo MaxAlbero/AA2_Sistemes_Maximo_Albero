@@ -4,19 +4,23 @@
 #include "../Utils/ConsoleControl.h"
 #include <mutex>
 
+#include "../Json/ICodable.h"
+
 enum class ItemType {
     COIN,
     POTION,
     WEAPON
 };
 
-class Item : public INodeContent {
+class Item : public INodeContent, public ICodable {
 private:
     Vector2 _position;
-    ItemType _type;
+    ItemType _type;     
     std::mutex _itemMutex;
 
 public:
+    Item() : _position(0, 0), _type(ItemType::COIN) {}
+
     Item(Vector2 position, ItemType type)
         : _position(position), _type(type) {
     }
@@ -56,5 +60,20 @@ public:
         ItemType type = _type;
         _itemMutex.unlock();
         return type;
+    }
+
+    Json::Value Code() override {
+        Json::Value json;
+        CodeSubClassType<Item>(json);
+        json["posX"] = _position.X;
+        json["posY"] = _position.Y;
+        json["type"] = static_cast<int>(_type);
+        return json;
+    }
+
+    void Decode(Json::Value json) override {
+        _position.X = json["posX"].asInt();
+        _position.Y = json["posY"].asInt();
+        _type = static_cast<ItemType>(json["type"].asInt());
     }
 };

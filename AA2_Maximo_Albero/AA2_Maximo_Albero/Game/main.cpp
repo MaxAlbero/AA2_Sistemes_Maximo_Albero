@@ -31,6 +31,12 @@ int main()
     //srand(time(NULL));
     HideConsoleCursor();
 
+    ICodable::SaveDecodeProcess<Player>();
+    ICodable::SaveDecodeProcess<Enemy>();
+    ICodable::SaveDecodeProcess<Chest>();
+    ICodable::SaveDecodeProcess<Item>();
+    ICodable::SaveDecodeProcess<Room>();
+
     Game game;
     game.Start();
 

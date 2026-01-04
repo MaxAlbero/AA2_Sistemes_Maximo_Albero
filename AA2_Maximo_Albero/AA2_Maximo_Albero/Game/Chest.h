@@ -17,6 +17,8 @@ private:
     bool _broken; //necesita empezar como "= false"
 
 public:
+    Chest() : Chest(Vector2(0, 0)) {}
+
     Chest(Vector2 position, int hp = 20)
         : _position(position), _hp(hp), _broken(false) {}
 
@@ -58,4 +60,21 @@ public:
         return isBroken;
     }
 
+
+    Json::Value Code() override {
+        Json::Value json;
+        CodeSubClassType<Chest>(json);
+        json["posX"] = _position.X;
+        json["posY"] = _position.Y;
+        json["hp"] = _hp;
+        json["broken"] = _broken;
+        return json;
+    }
+
+    void Decode(Json::Value json) override {
+        _position.X = json["posX"].asInt();
+        _position.Y = json["posY"].asInt();
+        _hp = json["hp"].asInt();
+        _broken = json["broken"].asBool();
+    }
 };

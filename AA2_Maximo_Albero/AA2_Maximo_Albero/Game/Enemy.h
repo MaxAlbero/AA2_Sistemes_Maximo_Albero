@@ -9,6 +9,8 @@
 #include <thread>
 #include <atomic>
 
+#include <random>
+
 #include "../Json/ICodable.h"
 
 
@@ -28,6 +30,8 @@ private:
     std::atomic<bool> _shouldStop;
 
 public:
+    Enemy() : Enemy(Vector2(0, 0)) {}
+
     Enemy(Vector2 startPosition, int hp = 30, int damage = 10)
         : _position(startPosition), _hp(hp), _damage(damage),
         _movementThread(nullptr), _isActive(false), _shouldStop(false)
