@@ -7,7 +7,9 @@
 #include "Chest.h"
 #include "Item.h"
 
-class Room
+#include "../Json/ICodable.h"
+
+class Room : public ICodable
 {
 private:
     NodeMap* _map;
@@ -19,6 +21,8 @@ private:
     std::vector<Item*> _items;
 
 public:
+    Room() : Room(Vector2(20, 10), Vector2(0, 0)) {}
+
     Room(Vector2 size, Vector2 offset) : _size(size), _initialized(false)
     {
         _map = new NodeMap(size, offset);
@@ -292,5 +296,67 @@ public:
         }
 
         return Vector2(1, 1); // Fallback
+    }
+
+    Json::Value Code() override {
+        Json::Value json;
+        CodeSubClassType<Room>(json);
+        json["initialized"] = _initialized;
+
+        // Guardar enemigos
+        Json::Value enemiesJson(Json::arrayValue);
+        for (Enemy* enemy : _enemies) {
+            enemiesJson.append(enemy->Code());
+        }
+        json["enemies"] = enemiesJson;
+
+        // Guardar cofres
+        Json::Value chestsJson(Json::arrayValue);
+        for (Chest* chest : _chests) {
+            chestsJson.append(chest->Code());
+        }
+        json["chests"] = chestsJson;
+
+        // Guardar items
+        Json::Value itemsJson(Json::arrayValue);
+        for (Item* item : _items) {
+            itemsJson.append(item->Code());
+        }
+        json["items"] = itemsJson;
+
+        return json;
+    }
+
+    void Decode(Json::Value json) override {
+        _initialized = json["initialized"].asBool();
+
+        // Limpiar entidades existentes
+        for (Enemy* enemy : _enemies) delete enemy;
+        for (Chest* chest : _chests) delete chest;
+        for (Item* item : _items) delete item;
+        _enemies.clear();
+        _chests.clear();
+        _items.clear();
+
+        // Cargar enemigos
+        Json::Value enemiesJson = json["enemies"];
+        for (const auto& enemyJson : enemiesJson) {
+            Enemy* enemy = ICodable::FromJson<Enemy>(enemyJson);
+            _enemies.push_back(enemy);
+        }
+
+        // Cargar cofres
+        Json::Value chestsJson = json["chests"];
+        for (const auto& chestJson : chestsJson) {
+            Chest* chest = ICodable::FromJson<Chest>(chestJson);
+            _chests.push_back(chest);
+        }
+
+        // Cargar items
+        Json::Value itemsJson = json["items"];
+        for (const auto& itemJson : itemsJson) {
+            Item* item = ICodable::FromJson<Item>(itemJson);
+            _items.push_back(item);
+        }
     }
 };

@@ -7,6 +7,7 @@
 #include "../InputSystem/InputSystem.h"
 #include "UI.h"
 #include <mutex>
+#include "SaveManager.h"
 
 class Game
 {
@@ -26,12 +27,16 @@ private:
     Player* _player;
     Vector2 _playerPosition;
 
+    SaveManager* _saveManager;
+
     int _currentRoomIndex;
     bool _running;
     std::mutex _gameMutex;
 
     void InitializeDungeon();
     void DrawCurrentRoom();
+
+    bool LoadSavedGame();  // Nuevo método
 
     bool CanMoveTo(Vector2 position);
     bool IsPositionOccupied(Vector2 position);

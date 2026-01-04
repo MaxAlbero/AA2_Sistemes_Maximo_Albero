@@ -2,6 +2,7 @@
 #include "../NodeMap/Vector2.h"
 #include "Player.h"
 #include "../Utils/ConsoleControl.h"
+#include "../Utils/GameConstants.h"
 #include <iostream>
 #include <thread>
 #include <atomic>

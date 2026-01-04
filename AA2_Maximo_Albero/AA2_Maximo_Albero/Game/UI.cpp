@@ -56,13 +56,12 @@ void UI::DrawSidebar()
 
     // Leyenda
 
-    CC::SetPosition(0, y + 5);
-    std::cout << "\n\nUsa las flechas o WASD para moverte." << std::endl;
-
+    CC::SetPosition(xOffset, y + 3);
+    std::cout << "Usa WASD para moverte." << std::endl;
     CC::SetPosition(xOffset, y);
     std::cout << "# = Pared  J = Jugador  E = Enemigo";
     CC::SetPosition(xOffset, y + 1);
-    std::cout << "O = Portal  C = Cofre  c = Moneda ";
+    std::cout << "O = Portal  C = Cofre  k = Moneda ";
     CC::SetPosition(xOffset, y + 2);
     std::cout << "p = Pocion  w = Arma                ";
 

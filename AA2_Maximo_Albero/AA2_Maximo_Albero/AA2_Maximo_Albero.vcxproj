@@ -123,12 +123,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="dist\jsoncpp.cpp" />
     <ClCompile Include="Game\Game.cpp" />
     <ClCompile Include="Game\main.cpp" />
+    <ClCompile Include="Game\SaveManager.cpp" />
     <ClCompile Include="Game\UI.cpp" />
     <ClCompile Include="InputSystem\InputSystem.cpp" />
     <ClCompile Include="Json\ICodable.cpp" />
-    <ClCompile Include="NodeMap\INodeContent.cpp" />
     <ClCompile Include="NodeMap\Node.cpp" />
     <ClCompile Include="NodeMap\NodeMap.cpp" />
     <ClCompile Include="NodeMap\Vector2.cpp" />
@@ -137,12 +138,15 @@
     <ClCompile Include="Utils\MessageSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="dist\json\json-forwards.h" />
+    <ClInclude Include="dist\json\json.h" />
     <ClInclude Include="Game\Chest.h" />
     <ClInclude Include="Game\DungeonMap.h" />
     <ClInclude Include="Game\Enemy.h" />
     <ClInclude Include="Game\EntityManager.h" />
     <ClInclude Include="Game\Item.h" />
     <ClInclude Include="Game\Portal.h" />
+    <ClInclude Include="Game\SaveManager.h" />
     <ClInclude Include="Game\UI.h" />
     <ClInclude Include="Game\Wall.h" />
     <ClInclude Include="Game\Game.h" />

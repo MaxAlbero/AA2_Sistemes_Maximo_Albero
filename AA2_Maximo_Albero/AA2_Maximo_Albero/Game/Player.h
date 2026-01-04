@@ -3,11 +3,13 @@
 #include "../Utils/ConsoleControl.h"
 #include "../NodeMap/Vector2.h"
 
+#include "../Json/ICodable.h"
+
 #include "../Utils/IAttacker.h"
 #include "../Utils/IDamageable.h"
 #include <chrono>
 
-class Player : public INodeContent, public IAttacker, public IDamageable
+class Player : public INodeContent, public IAttacker, public IDamageable, public ICodable
 {
 private:
     Vector2 _position;
@@ -23,6 +25,8 @@ private:
     std::mutex _playerMutex;
 
 public:
+    Player() : Player(Vector2(0, 0)) {}
+
     Player(Vector2 startPosition)
         : _position(startPosition), _hp(50), _maxHp(50), _coins(0), _potionCount(1), _weapon(0)
     {
@@ -31,12 +35,19 @@ public:
 
     void Draw(Vector2 pos) override {
         CC::Lock();
+        CC::SetColor(CC::WHITE);
         CC::SetPosition(pos.X, pos.Y);
         std::cout << "J";
+        CC::SetColor(CC::WHITE);
         CC::Unlock();
     }
 
-    Vector2 GetPosition() const { return _position; }
+    Vector2 GetPosition() {
+        _playerMutex.lock();
+        Vector2 pos = _position;
+        _playerMutex.unlock();
+        return pos;
+    }
     void SetPosition(Vector2 newPos) { _position = newPos; }
 
     bool CanPerformAction()
@@ -129,11 +140,17 @@ public:
             if (_hp > _maxHp)
                 _hp = _maxHp;
 
-            std::cout << "¡Poción usada! HP: " << _hp << std::endl;
+            CC::Lock();
+            CC::SetPosition(0, 18);  // Posición fija debajo del mapa
+            std::cout << "¡Poción usada! HP: " << _hp << "    " << std::endl;
+            CC::Unlock();
         }
         else
         {
+            CC::Lock();
+            CC::SetPosition(0, 18);
             std::cout << "No tienes pociones" << std::endl;
+            CC::Unlock();
         }
 
         _playerMutex.unlock();
@@ -188,5 +205,27 @@ public:
         return alive;
     }
 
+    Json::Value Code() override {
+        Json::Value json;
+        CodeSubClassType<Player>(json);
+        json["posX"] = _position.X;
+        json["posY"] = _position.Y;
+        json["hp"] = _hp;
+        json["maxHp"] = _maxHp;
+        json["coins"] = _coins;
+        json["potions"] = _potionCount;
+        json["weapon"] = _weapon;
+        return json;
+    }
+
+    void Decode(Json::Value json) override {
+        _position.X = json["posX"].asInt();
+        _position.Y = json["posY"].asInt();
+        _hp = json["hp"].asInt();
+        _maxHp = json["maxHp"].asInt();
+        _coins = json["coins"].asInt();
+        _potionCount = json["potions"].asInt();
+        _weapon = json["weapon"].asInt();
+    }
 
 };

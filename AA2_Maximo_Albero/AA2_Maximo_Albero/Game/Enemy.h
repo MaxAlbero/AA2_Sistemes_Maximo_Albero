@@ -8,9 +8,13 @@
 #include <mutex>
 #include <thread>
 #include <atomic>
+
 #include <random>
 
-class Enemy : public INodeContent, public IAttacker, public IDamageable
+#include "../Json/ICodable.h"
+
+
+class Enemy : public INodeContent, public IAttacker, public IDamageable, public ICodable
 {
 private:
     Vector2 _position;
@@ -26,6 +30,8 @@ private:
     std::atomic<bool> _shouldStop;
 
 public:
+    Enemy() : Enemy(Vector2(0, 0)) {}
+
     Enemy(Vector2 startPosition, int hp = 30, int damage = 10)
         : _position(startPosition), _hp(hp), _damage(damage),
         _movementThread(nullptr), _isActive(false), _shouldStop(false)
@@ -39,9 +45,11 @@ public:
     }
 
     void Draw(Vector2 pos) override {
-        CC::Lock();
+        CC::Lock();  
+        CC::SetColor(CC::DARKRED);
         CC::SetPosition(pos.X, pos.Y);
         std::cout << "E";
+        CC::SetColor(CC::WHITE);
         CC::Unlock();
     }
 
@@ -183,6 +191,24 @@ public:
     void Lock() { _enemyMutex.lock(); }
     void Unlock() { _enemyMutex.unlock(); }
 
+    Json::Value Code() override {
+        Json::Value json;
+        CodeSubClassType<Enemy>(json);
+        json["posX"] = _position.X;
+        json["posY"] = _position.Y;
+        json["hp"] = _hp;
+        json["damage"] = _damage;
+        return json;
+    }
+
+    void Decode(Json::Value json) override {
+        _position.X = json["posX"].asInt();
+        _position.Y = json["posY"].asInt();
+        _hp = json["hp"].asInt();
+        _damage = json["damage"].asInt();
+        _lastActionTime = std::chrono::steady_clock::now();
+    }
+
 private:
     void MovementLoop()
     {
@@ -198,5 +224,5 @@ private:
         }
     }
 
-    //TO DO: MAKE THE ENEMIES DAMAGE THE PLAYER
+
 };
