@@ -8,9 +8,11 @@
 #include <mutex>
 #include <thread>
 #include <atomic>
-#include <random>
 
-class Enemy : public INodeContent, public IAttacker, public IDamageable
+#include "../Json/ICodable.h"
+
+
+class Enemy : public INodeContent, public IAttacker, public IDamageable, public ICodable
 {
 private:
     Vector2 _position;
@@ -183,6 +185,24 @@ public:
     void Lock() { _enemyMutex.lock(); }
     void Unlock() { _enemyMutex.unlock(); }
 
+    Json::Value Code() override {
+        Json::Value json;
+        CodeSubClassType<Enemy>(json);
+        json["posX"] = _position.X;
+        json["posY"] = _position.Y;
+        json["hp"] = _hp;
+        json["damage"] = _damage;
+        return json;
+    }
+
+    void Decode(Json::Value json) override {
+        _position.X = json["posX"].asInt();
+        _position.Y = json["posY"].asInt();
+        _hp = json["hp"].asInt();
+        _damage = json["damage"].asInt();
+        _lastActionTime = std::chrono::steady_clock::now();
+    }
+
 private:
     void MovementLoop()
     {
@@ -198,5 +218,5 @@ private:
         }
     }
 
-    //TO DO: MAKE THE ENEMIES DAMAGE THE PLAYER
+
 };

@@ -7,7 +7,9 @@
 #include "Chest.h"
 #include "Item.h"
 
-class Room
+#include "../Json/ICodable.h"
+
+class Room : public ICodable
 {
 private:
     NodeMap* _map;

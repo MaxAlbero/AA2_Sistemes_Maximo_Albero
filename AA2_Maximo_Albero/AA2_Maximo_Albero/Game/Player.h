@@ -3,11 +3,13 @@
 #include "../Utils/ConsoleControl.h"
 #include "../NodeMap/Vector2.h"
 
+#include "../Json/ICodable.h"
+
 #include "../Utils/IAttacker.h"
 #include "../Utils/IDamageable.h"
 #include <chrono>
 
-class Player : public INodeContent, public IAttacker, public IDamageable
+class Player : public INodeContent, public IAttacker, public IDamageable, public ICodable
 {
 private:
     Vector2 _position;
@@ -188,5 +190,27 @@ public:
         return alive;
     }
 
+    Json::Value Code() override {
+        Json::Value json;
+        CodeSubClassType<Player>(json);
+        json["posX"] = _position.X;
+        json["posY"] = _position.Y;
+        json["hp"] = _hp;
+        json["maxHp"] = _maxHp;
+        json["coins"] = _coins;
+        json["potions"] = _potionCount;
+        json["weapon"] = _weapon;
+        return json;
+    }
+
+    void Decode(Json::Value json) override {
+        _position.X = json["posX"].asInt();
+        _position.Y = json["posY"].asInt();
+        _hp = json["hp"].asInt();
+        _maxHp = json["maxHp"].asInt();
+        _coins = json["coins"].asInt();
+        _potionCount = json["potions"].asInt();
+        _weapon = json["weapon"].asInt();
+    }
 
 };

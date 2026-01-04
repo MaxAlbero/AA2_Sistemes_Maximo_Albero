@@ -6,7 +6,9 @@
 #include <mutex>
 #include <thread>
 
-class Chest : public INodeContent, public IDamageable {
+#include "../Json/ICodable.h"
+
+class Chest : public INodeContent, public IDamageable, public ICodable {
 private:
     Vector2 _position;
     int _hp;
