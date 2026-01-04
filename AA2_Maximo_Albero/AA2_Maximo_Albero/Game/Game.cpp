@@ -89,12 +89,6 @@ void Game::Start()
             // Ahora obtén la posición del jugador
             _playerPosition = _player->GetPosition();
 
-            std::cout << " DEBUG - Sala activa después de cargar: ("
-                << _dungeonMap->GetCurrentX() << ", "
-                << _dungeonMap->GetCurrentY() << ")" << std::endl;
-            std::cout << " DEBUG - Posición del jugador: ("
-                << _playerPosition.X << ", " << _playerPosition.Y << ")" << std::endl;
-
             // Activar entidades de la sala actual (que ahora es la correcta)
             Room* currentRoom = _dungeonMap->GetActiveRoom();
             if (currentRoom != nullptr)

@@ -9,6 +9,7 @@
 #include "../dist/json/json.h"
 #include "DungeonMap.h"
 #include "Player.h"
+#include "../Utils/GameConstants.h"
 
 #include "EntityManager.h"
 

@@ -20,9 +20,6 @@ bool SaveManager::SaveGame(DungeonMap* dungeonMap, Player* player)
 
         CC::Lock();
         CC::SetPosition(15, 11);
-        std::cout << " DEBUG SaveGame: Guardando jugador en posición ("
-            << player->GetPosition().X << ", "
-            << player->GetPosition().Y << ")" << std::endl;
         CC::Unlock();
 
         // Guardar posición actual en el mundo
@@ -117,9 +114,6 @@ bool SaveManager::LoadGame(DungeonMap* dungeonMap, Player* player, EntityManager
 
         CC::Lock();
         CC::SetPosition(xOffset, y++);
-        std::cout << "DEBUG LoadGame: Jugador cargado en posición ("
-            << root["player"]["posX"].asInt() << ", "
-            << root["player"]["posY"].asInt() << ")" << std::endl;
         CC::Unlock();
 
         // Cargar posición del mundo
@@ -132,7 +126,7 @@ bool SaveManager::LoadGame(DungeonMap* dungeonMap, Player* player, EntityManager
         if (worldWidth != dungeonMap->GetWorldWidth() ||
             worldHeight != dungeonMap->GetWorldHeight())
         {
-            std::cerr << "Error: Las dimensiones del mundo guardado no coinciden" << std::endl;
+            std::cout << "Error: Las dimensiones del mundo guardado no coinciden" << std::endl;
             return false;
         }
 
@@ -197,7 +191,10 @@ void SaveManager::StartAutoSave(DungeonMap* dungeonMap, Player* player, EntityMa
 
     _autoSaveThread = new std::thread(&SaveManager::AutoSaveLoop, this);
 
+    CC::Lock();
+    CC::SetPosition(MAP_WIDTH, 10);
     std::cout << "Sistema de autoguardado iniciado (cada " << _autoSaveIntervalSeconds << " segundos)" << std::endl;
+    CC::Unlock();
 }
 
 bool SaveManager::SaveFileExists()
@@ -243,11 +240,17 @@ void SaveManager::AutoSaveLoop()
         // Realizar guardado automático
         if (SaveGame(_dungeonMapRef, _playerRef))
         {
-            std::cout << "[AutoSave] Partida guardada automáticamente" << std::endl;
+            CC::Lock();
+            CC::SetPosition(MAP_WIDTH, 11);
+            std::cout << "[AutoSave] Partida guardada" << std::endl;
+            CC::Unlock();
         }
         else
         {
-            std::cerr << "[AutoSave] Error al guardar automáticamente" << std::endl;
+            CC::Lock();
+            CC::SetPosition(MAP_WIDTH, 11);
+            std::cerr << "[AutoSave] Error al guardar" << std::endl;
+            CC::Unlock();
         }
     }
 }

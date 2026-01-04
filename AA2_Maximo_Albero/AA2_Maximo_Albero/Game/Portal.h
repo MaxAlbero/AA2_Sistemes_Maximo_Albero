@@ -15,8 +15,10 @@ public:
 
     void Draw(Vector2 pos) override {
         CC::Lock();
+        CC::SetColor(CC::LIGHTGREY);
         CC::SetPosition(pos.X, pos.Y);
         std::cout << "P";
+        CC::SetColor(CC::WHITE);
         CC::Unlock();
     }
 

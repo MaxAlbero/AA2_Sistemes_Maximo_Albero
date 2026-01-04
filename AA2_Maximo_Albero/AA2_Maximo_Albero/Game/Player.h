@@ -35,8 +35,10 @@ public:
 
     void Draw(Vector2 pos) override {
         CC::Lock();
+        CC::SetColor(CC::WHITE);
         CC::SetPosition(pos.X, pos.Y);
         std::cout << "J";
+        CC::SetColor(CC::WHITE);
         CC::Unlock();
     }
 
@@ -138,11 +140,17 @@ public:
             if (_hp > _maxHp)
                 _hp = _maxHp;
 
-            std::cout << "¡Poción usada! HP: " << _hp << std::endl;
+            CC::Lock();
+            CC::SetPosition(0, 18);  // Posición fija debajo del mapa
+            std::cout << "¡Poción usada! HP: " << _hp << "    " << std::endl;
+            CC::Unlock();
         }
         else
         {
+            CC::Lock();
+            CC::SetPosition(0, 18);
             std::cout << "No tienes pociones" << std::endl;
+            CC::Unlock();
         }
 
         _playerMutex.unlock();
