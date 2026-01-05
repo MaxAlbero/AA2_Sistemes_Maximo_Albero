@@ -46,7 +46,12 @@ public:
 
     void Draw(Vector2 pos) override;
 
-    Vector2 GetPosition();
+    Vector2 GetPosition() {
+        _enemyMutex.lock();
+        Vector2 pos = _position;
+        _enemyMutex.unlock();
+        return pos;
+    }
 
     void SetPosition(Vector2 newPos) {
         _enemyMutex.lock();

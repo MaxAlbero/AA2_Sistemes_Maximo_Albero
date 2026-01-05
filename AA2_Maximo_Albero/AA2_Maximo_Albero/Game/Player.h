@@ -37,7 +37,7 @@ public:
 
     Vector2 GetPosition();
 
-    void SetPosition(Vector2 newPos) { _position = newPos; }
+    void SetPosition(Vector2 newPos);
 
     bool CanPerformAction();
 

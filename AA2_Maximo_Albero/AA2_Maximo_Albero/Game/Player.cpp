@@ -17,6 +17,9 @@ Vector2 Player::GetPosition() {
     return pos;
 }
 
+void Player::SetPosition(Vector2 newPos) {
+    _position = newPos;
+}
 
 bool Player::CanPerformAction()
 {

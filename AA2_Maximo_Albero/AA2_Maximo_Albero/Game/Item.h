@@ -27,53 +27,13 @@ public:
 
     ~Item() {}
 
-    void Draw(Vector2 pos) override {
-        CC::Lock();
-        CC::SetPosition(pos.X, pos.Y);
+    void Draw(Vector2 pos) override;
 
-        // Dibujar según el tipo
-        switch (_type)
-        {
-        case ItemType::COIN:
-            std::cout << "k";  // 'c' para coin
-            break;
-        case ItemType::POTION:
-            std::cout << "o";  // 'o' para potion
-            break;
-        case ItemType::WEAPON:
-            std::cout << "w";  // 'w' para weapon
-            break;
-        }
+    Vector2 GetPosition();
 
-        CC::Unlock();
-    }
+    ItemType GetType();
 
-    Vector2 GetPosition() {
-        _itemMutex.lock();
-        Vector2 pos = _position;
-        _itemMutex.unlock();
-        return pos;
-    }
+    Json::Value Code() override;
 
-    ItemType GetType() {
-        _itemMutex.lock();
-        ItemType type = _type;
-        _itemMutex.unlock();
-        return type;
-    }
-
-    Json::Value Code() override {
-        Json::Value json;
-        CodeSubClassType<Item>(json);
-        json["posX"] = _position.X;
-        json["posY"] = _position.Y;
-        json["type"] = static_cast<int>(_type);
-        return json;
-    }
-
-    void Decode(Json::Value json) override {
-        _position.X = json["posX"].asInt();
-        _position.Y = json["posY"].asInt();
-        _type = static_cast<ItemType>(json["type"].asInt());
-    }
+    void Decode(Json::Value json) override;
 };
