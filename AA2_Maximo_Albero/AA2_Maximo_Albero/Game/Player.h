@@ -33,199 +33,44 @@ public:
         _lastActionTime = std::chrono::steady_clock::now();
     }
 
-    void Draw(Vector2 pos) override {
-        CC::Lock();
-        CC::SetColor(CC::WHITE);
-        CC::SetPosition(pos.X, pos.Y);
-        std::cout << "J";
-        CC::SetColor(CC::WHITE);
-        CC::Unlock();
-    }
+    void Draw(Vector2 pos) override;
 
-    Vector2 GetPosition() {
-        _playerMutex.lock();
-        Vector2 pos = _position;
-        _playerMutex.unlock();
-        return pos;
-    }
+    Vector2 GetPosition();
+
     void SetPosition(Vector2 newPos) { _position = newPos; }
 
-    bool CanPerformAction()
-    {
-        _playerMutex.lock();
-        auto currentTime = std::chrono::steady_clock::now();
-        auto timeSinceLastAction = std::chrono::duration_cast<std::chrono::milliseconds>(
-            currentTime - _lastActionTime
-        ).count();
-        bool canAct = timeSinceLastAction >= _actionCooldownMs;
-        _playerMutex.unlock();
-        return canAct;
-    }
+    bool CanPerformAction();
 
-    void UpdateActionTime()
-    {
-        _playerMutex.lock();
-        _lastActionTime = std::chrono::steady_clock::now();
-        _playerMutex.unlock();
-    }
+    void UpdateActionTime();
 
-    void SetActionCooldown(int milliseconds)
-    {
-        _playerMutex.lock();
-        _actionCooldownMs = milliseconds;
-        _playerMutex.unlock();
-    }
+    void SetActionCooldown(int milliseconds);
 
-    void Attack(IDamageable* entity) const override {
-        if(entity != nullptr)
-            entity->ReceiveDamage(20);
-    }
+    void Attack(IDamageable* entity) const override;
 
-    void ReceiveDamage(int damageToReceive) override {
-        _playerMutex.lock();
-        _hp -= damageToReceive;
+    void ReceiveDamage(int damageToReceive) override;
 
-        //std::cout << "¡El jugador recibe " << damageToReceive << " de daño! HP: " << _hp << std::endl;
+    void AddCoin();
 
-        if (_hp <= 0)
-        {
-            _hp = 0;
-            //std::cout << "¡GAME OVER!" << std::endl;
-        }
+    void AddPotion();
 
-        _playerMutex.unlock();
-    }
+    void ChangeWeapon();
 
-    void AddCoin()
-    {
-        _playerMutex.lock();
-        _coins+=10;
-        _playerMutex.unlock();
-    }
-
-    void AddPotion()
-    {
-        _playerMutex.lock();
-        _potionCount++;
-        _playerMutex.unlock();
-    }
-
-    void ChangeWeapon()
-    {
-        _playerMutex.lock();
-
-        switch (_weapon) {
-        case 0:
-            _weapon = 1;
-            break;
-        case 1:
-            _weapon = 0;
-            break;
-        default:
-            _weapon = 0;
-        }
-
-        _playerMutex.unlock();
-    }
-
-    void UsePotion()
-    {
-        _playerMutex.lock();
-
-        if (_potionCount > 0)
-        {
-            _potionCount--;
-            _hp += 20; // Recupera 20 HP
-
-            if (_hp > _maxHp)
-                _hp = _maxHp;
-
-            CC::Lock();
-            CC::SetPosition(0, 18);  // Posición fija debajo del mapa
-            std::cout << "¡Poción usada! HP: " << _hp << "    " << std::endl;
-            CC::Unlock();
-        }
-        else
-        {
-            CC::Lock();
-            CC::SetPosition(0, 18);
-            std::cout << "No tienes pociones" << std::endl;
-            CC::Unlock();
-        }
-
-        _playerMutex.unlock();
-    }
+    void UsePotion();
 
 
-    int GetAttackRange()
-    {
-        _playerMutex.lock();
-        int range = (_weapon == 0) ? 1 : 2; // Espada = 1, Lanza = 2
-        _playerMutex.unlock();
-        return range;
-    }
+    int GetAttackRange();
 
-    int GetHP()
-    {
-        _playerMutex.lock();
-        int hp = _hp;
-        _playerMutex.unlock();
-        return hp;
-    }
+    int GetHP();
 
-    int GetCoins()
-    {
-        _playerMutex.lock();
-        int coins = _coins;
-        _playerMutex.unlock();
-        return coins;
-    }
+    int GetCoins();
 
-    int GetPotionCount()
-    {
-        _playerMutex.lock();
-        int potions = _potionCount;
-        _playerMutex.unlock();
-        return potions;
-    }
+    int GetPotionCount();
 
-    int GetWeapon()
-    {
-        _playerMutex.lock();
-        int weapon = _weapon;
-        _playerMutex.unlock();
-        return weapon;
-    }
+    int GetWeapon();
+    bool IsAlive();
 
-    bool IsAlive()
-    {
-        _playerMutex.lock();
-        bool alive = _hp > 0;
-        _playerMutex.unlock();
-        return alive;
-    }
+    Json::Value Code() override;
 
-    Json::Value Code() override {
-        Json::Value json;
-        CodeSubClassType<Player>(json);
-        json["posX"] = _position.X;
-        json["posY"] = _position.Y;
-        json["hp"] = _hp;
-        json["maxHp"] = _maxHp;
-        json["coins"] = _coins;
-        json["potions"] = _potionCount;
-        json["weapon"] = _weapon;
-        return json;
-    }
-
-    void Decode(Json::Value json) override {
-        _position.X = json["posX"].asInt();
-        _position.Y = json["posY"].asInt();
-        _hp = json["hp"].asInt();
-        _maxHp = json["maxHp"].asInt();
-        _coins = json["coins"].asInt();
-        _potionCount = json["potions"].asInt();
-        _weapon = json["weapon"].asInt();
-    }
+    void Decode(Json::Value json) override;
 
 };

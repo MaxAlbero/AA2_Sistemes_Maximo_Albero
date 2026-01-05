@@ -44,21 +44,9 @@ public:
         StopMovement();
     }
 
-    void Draw(Vector2 pos) override {
-        CC::Lock();  
-        CC::SetColor(CC::DARKRED);
-        CC::SetPosition(pos.X, pos.Y);
-        std::cout << "E";
-        CC::SetColor(CC::WHITE);
-        CC::Unlock();
-    }
+    void Draw(Vector2 pos) override;
 
-    Vector2 GetPosition() {
-        _enemyMutex.lock();
-        Vector2 pos = _position;
-        _enemyMutex.unlock();
-        return pos;
-    }
+    Vector2 GetPosition();
 
     void SetPosition(Vector2 newPos) {
         _enemyMutex.lock();
