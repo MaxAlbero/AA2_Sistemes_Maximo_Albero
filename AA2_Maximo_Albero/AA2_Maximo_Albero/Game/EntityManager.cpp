@@ -2,9 +2,9 @@
 
 void EntityManager::SetCurrentRoom(Room* room)
 {
-    _managerMutex.lock();
+    Lock();
     _currentRoom = room;
-    _managerMutex.unlock();
+    Unlock();
 }
 
 
@@ -16,9 +16,9 @@ void EntityManager::SpawnEnemy(Vector2 position, Room* room)
 
     Enemy* enemy = new Enemy(position);
 
-    _managerMutex.lock();
+    Lock();
     _enemies.push_back(enemy);
-    _managerMutex.unlock();
+    Unlock();
 
 
 
@@ -51,9 +51,9 @@ void EntityManager::SpawnChest(Vector2 position, Room* room)
     Chest* chest = new Chest(position);
 
 
-    _managerMutex.lock();
+    Lock();
     _chests.push_back(chest);
-    _managerMutex.unlock();
+    Unlock();
 
     // Añadir a la sala
     room->AddChest(chest);
@@ -104,13 +104,13 @@ void EntityManager::CleanupDeadEnemies(Room* room)
                 }
                 });
 
-            _managerMutex.lock();
+            Lock();
             auto globalIt = std::find(_enemies.begin(), _enemies.end(), enemy);
             if (globalIt != _enemies.end())
             {
                 _enemies.erase(globalIt);
             }
-            _managerMutex.unlock();
+            Unlock();
 
             delete enemy;
             it = enemies.erase(it);
@@ -126,7 +126,7 @@ void EntityManager::CleanupDeadEnemies(Room* room)
 
 bool EntityManager::IsPositionOccupiedByEnemy(Vector2 position)
 {
-    _managerMutex.lock();
+    Lock();
 
     bool occupied = false;
     for (const Enemy* enemy : _enemies)
@@ -139,7 +139,7 @@ bool EntityManager::IsPositionOccupiedByEnemy(Vector2 position)
         }
     }
 
-    _managerMutex.unlock();
+    Unlock();
     return occupied;
 }
 
@@ -162,31 +162,31 @@ Enemy* EntityManager::GetEnemyAtPosition(Vector2 position, Room* room)
 //Methods to get entities
 std::vector<Enemy*> EntityManager::GetEnemies()
 {
-    _managerMutex.lock();
+    Lock();
     std::vector<Enemy*> enemiesCopy = _enemies;
-    _managerMutex.unlock();
+    Unlock();
     return enemiesCopy;
 }
 
 std::vector<Chest*> EntityManager::GetChests()
 {
-    _managerMutex.lock();
+    Lock();
     std::vector<Chest*> chestsCopy = _chests;
-    _managerMutex.unlock();
+    Unlock();
     return chestsCopy;
 }
 
 std::vector<Item*> EntityManager::GetItems()
 {
-    _managerMutex.lock();
+    Lock();
     std::vector<Item*> itemsCopy = _items;
-    _managerMutex.unlock();
+    Unlock();
     return itemsCopy;
 }
 
 void EntityManager::ClearAllEntities()
 {
-    _managerMutex.lock();
+    Lock();
 
     for (Enemy* enemy : _enemies)
     {
@@ -206,14 +206,14 @@ void EntityManager::ClearAllEntities()
     }
     _items.clear();
 
-    _managerMutex.unlock();
+    Unlock();
 }
 
 int EntityManager::GetEnemyCount()
 {
-    _managerMutex.lock();
+    Lock();
     int count = _enemies.size();
-    _managerMutex.unlock();
+    Unlock();
     return count;
 }
 
@@ -223,11 +223,11 @@ void EntityManager::StartEnemyMovement(Room* room, std::function<Vector2()> getP
     if (_movementActive)
         return;
 
-    _managerMutex.lock();
+    Lock();
     _currentRoom = room;
     _getPlayerPositionCallback = getPlayerPositionCallback;
     _onEnemyAttackPlayer = onEnemyAttackPlayer;
-    _managerMutex.unlock();
+    Unlock();
 
     _movementActive = true;
     _enemyMovementThread = new std::thread(&EntityManager::EnemyMovementLoop, this);
@@ -252,7 +252,7 @@ void EntityManager::StopEnemyMovement()
 
 bool EntityManager::IsPositionOccupiedByChest(Vector2 position)
 {
-    _managerMutex.lock();
+    Lock();
 
     bool occupied = false;
     for (const Chest* chest : _chests)
@@ -265,7 +265,7 @@ bool EntityManager::IsPositionOccupiedByChest(Vector2 position)
         }
     }
 
-    _managerMutex.unlock();
+    Unlock();
     return occupied;
 }
 
@@ -316,13 +316,13 @@ void EntityManager::CleanupBrokenChests(Room* room)
                 }
                 });
 
-            _managerMutex.lock();
+            Lock();
             auto globalIt = std::find(_chests.begin(), _chests.end(), chest);
             if (globalIt != _chests.end())
             {
                 _chests.erase(globalIt);
             }
-            _managerMutex.unlock();
+            Unlock();
 
             delete chest;
             it = chests.erase(it);
@@ -338,9 +338,9 @@ void EntityManager::CleanupBrokenChests(Room* room)
 
 int EntityManager::GetChestCount()
 {
-    _managerMutex.lock();
+    Lock();
     int count = _chests.size();
-    _managerMutex.unlock();
+    Unlock();
     return count;
 }
 
@@ -351,9 +351,9 @@ void EntityManager::SpawnItem(Vector2 position, ItemType type, Room* room)
 
     Item* item = new Item(position, type);
 
-    _managerMutex.lock();
+    Lock();
     _items.push_back(item);
-    _managerMutex.unlock();
+    Unlock();
 
     // Añadir a la sala
     room->AddItem(item);
@@ -419,13 +419,13 @@ void EntityManager::RemoveItem(Item* itemToRemove, Room* room)
                 });
 
             // Eliminar de la lista global del EntityManager
-            _managerMutex.lock();
+            Lock();
             auto globalIt = std::find(_items.begin(), _items.end(), itemToRemove);
             if (globalIt != _items.end())
             {
                 _items.erase(globalIt);
             }
-            _managerMutex.unlock();
+            Unlock();
 
             // Eliminar de la lista de la sala
             delete itemToRemove;
@@ -438,7 +438,7 @@ void EntityManager::RemoveItem(Item* itemToRemove, Room* room)
 
 bool EntityManager::IsPositionOccupiedByItem(Vector2 position)
 {
-    _managerMutex.lock();
+    Lock();
 
     bool occupied = false;
     for (const Item* item : _items)
@@ -451,7 +451,7 @@ bool EntityManager::IsPositionOccupiedByItem(Vector2 position)
         }
     }
 
-    _managerMutex.unlock();
+    Unlock();
     return occupied;
 }
 
@@ -517,7 +517,7 @@ void EntityManager::InitializeRoomEntities(Room* room, int roomX, int roomY)
 
 bool EntityManager::TryAttackEnemyAt(Vector2 position, Player* attacker, Room* room)
 {
-    _managerMutex.lock();
+    Lock();
 
     Enemy* enemy = nullptr;
     for (Enemy* e : _enemies)
@@ -533,19 +533,19 @@ bool EntityManager::TryAttackEnemyAt(Vector2 position, Player* attacker, Room* r
     if (enemy != nullptr)
     {
         attacker->Attack(enemy);
-        _managerMutex.unlock();
+        Unlock();
 
         CleanupDeadEnemies(room);
         return true;
     }
 
-    _managerMutex.unlock();
+    Unlock();
     return false;
 }
 
 bool EntityManager::TryAttackChestAt(Vector2 position, Player* attacker, Room* room)
 {
-    _managerMutex.lock();
+    Lock();
 
     Chest* chest = nullptr;
     for (Chest* c : _chests)
@@ -561,13 +561,13 @@ bool EntityManager::TryAttackChestAt(Vector2 position, Player* attacker, Room* r
     if (chest != nullptr)
     {
         attacker->Attack(chest);
-        _managerMutex.unlock();
+        Unlock();
 
         CleanupBrokenChests(room);
         return true;
     }
 
-    _managerMutex.unlock();
+    Unlock();
     return false;
 }
 
@@ -576,7 +576,7 @@ void EntityManager::RegisterLoadedEntities(Room* room)
     if (room == nullptr)
         return;
 
-    _managerMutex.lock();
+    Lock();
 
     // Registrar enemigos
     for (Enemy* enemy : room->GetEnemies())
@@ -618,7 +618,7 @@ void EntityManager::RegisterLoadedEntities(Room* room)
         }
     }
 
-    _managerMutex.unlock();
+    Unlock();
 }
 
 bool EntityManager::IsAdjacent(Vector2 pos1, Vector2 pos2)
@@ -641,12 +641,12 @@ void EntityManager::EnemyMovementLoop()  //  Sin parámetros ahora
             break;
 
         // Obtener sala actual y callbacks de forma segura
-        _managerMutex.lock();
+        Lock();
         Room* room = _currentRoom;
         auto getPlayerPos = _getPlayerPositionCallback;
         auto onAttack = _onEnemyAttackPlayer;
         std::vector<Enemy*> enemiesCopy = _enemies;
-        _managerMutex.unlock();
+        Unlock();
 
         if (room == nullptr)
             continue;
@@ -660,7 +660,7 @@ void EntityManager::EnemyMovementLoop()  //  Sin parámetros ahora
         {
             // Verificar si el enemigo está en la lista global
             bool isInGlobalList = false;
-            _managerMutex.lock();
+            Lock();
             for (Enemy* globalEnemy : _enemies)
             {
                 if (globalEnemy == enemy)
@@ -669,7 +669,7 @@ void EntityManager::EnemyMovementLoop()  //  Sin parámetros ahora
                     break;
                 }
             }
-            _managerMutex.unlock();
+            Unlock();
 
             if (!isInGlobalList || !enemy->IsAlive() || !enemy->CanPerformAction())
                 continue;
@@ -763,7 +763,7 @@ bool EntityManager::CanEnemyMoveTo(Vector2 newPosition, Vector2 currentPosition,
     }
 
     // Verificar si hay otro enemigo (excepto el actual)
-    _managerMutex.lock();
+    Lock();
     for (Enemy* enemy : _enemies)
     {
         Vector2 enemyPos = enemy->GetPosition();
@@ -804,7 +804,7 @@ bool EntityManager::CanEnemyMoveTo(Vector2 newPosition, Vector2 currentPosition,
         }
     }
 
-    _managerMutex.unlock();
+    Unlock();
 
     return canMove;
 }

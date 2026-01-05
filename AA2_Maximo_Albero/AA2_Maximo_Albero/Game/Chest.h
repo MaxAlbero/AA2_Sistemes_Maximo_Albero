@@ -29,6 +29,9 @@ public:
     void ReceiveDamage(int damageToReceive) override;
     bool IsBroken();
 
+    void Lock() { _chestMutex.lock(); }
+    void Unlock() { _chestMutex.unlock(); }
+
     Json::Value Code() override;
     void Decode(Json::Value json) override;
 };

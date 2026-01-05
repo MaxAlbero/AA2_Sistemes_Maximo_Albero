@@ -69,8 +69,10 @@ public:
     int GetWeapon();
     bool IsAlive();
 
-    Json::Value Code() override;
+    void Lock() { _playerMutex.lock(); }
+    void Unlock() { _playerMutex.unlock(); }
 
+    Json::Value Code() override;
     void Decode(Json::Value json) override;
 
 };

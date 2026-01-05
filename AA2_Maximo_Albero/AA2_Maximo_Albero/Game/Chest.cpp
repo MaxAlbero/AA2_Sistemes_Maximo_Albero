@@ -12,15 +12,15 @@ void Chest::Draw(Vector2 pos)
 
 
 Vector2 Chest::GetPosition() {
-    _chestMutex.lock();
+    Lock();
     Vector2 pos = _position;
-    _chestMutex.unlock();
+    Unlock();
     return pos;
 }
 
 
 void Chest::ReceiveDamage(int damageToReceive) {
-    _chestMutex.lock();
+    Lock();
     _hp -= damageToReceive;
 
     if (_hp <= 0)
@@ -30,13 +30,13 @@ void Chest::ReceiveDamage(int damageToReceive) {
         //std::cout << "¡Cofre destruido!" << std::endl;
     }
 
-    _chestMutex.unlock();
+    Unlock();
 }
 
 bool Chest::IsBroken() {
-    _chestMutex.lock();
+    Lock();
     bool isBroken = _broken;
-    _chestMutex.unlock();
+    Unlock();
     return isBroken;
 }
 
