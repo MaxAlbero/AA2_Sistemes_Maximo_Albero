@@ -14,6 +14,7 @@ Game::Game()
     _playerPosition = Vector2(1, 1);
     _currentRoomIndex = 0;
     _running = false;
+    _messages = new MessageSystem();
 
     _saveManager = new SaveManager("savegame.json", 5); // Autoguardado cada 5 segundos
 }
@@ -26,6 +27,8 @@ Game::~Game()
         delete _player;
 
     delete _saveManager;
+
+    delete _messages;
     delete _ui;
     delete _spawner;
     delete _entityManager;
@@ -81,7 +84,7 @@ void Game::Start()
         std::cout << "Partida guardada encontrada. Cargando..." << std::endl;
 
         // Crear jugador temporal
-        _player = new Player(Vector2(0, 0));
+        _player = new Player(_playerPosition, _messages);
 
         if (_saveManager->LoadGame(_dungeonMap, _player, _entityManager))
         {
@@ -136,7 +139,7 @@ void Game::Start()
         _dungeonMap->SetActiveRoom(1, 1);
 
         _playerPosition = Vector2(10, 5);
-        _player = new Player(_playerPosition);
+        _player = new Player(_playerPosition, _messages);
 
         // Colocar al jugador en el mapa
         Room* currentRoom = _dungeonMap->GetActiveRoom();
@@ -152,6 +155,8 @@ void Game::Start()
     }
 
     _ui->SetMapSize(Vector2(20, 10));
+
+    _messages->Start();
 
     // Registrar los listeners de input
     _inputSystem->AddListener(K_W, [this]() { this->OnMoveUp(); });
@@ -288,7 +293,8 @@ void Game::MovePlayer(Vector2 direction)
         return;
     }
 
-    // Verificar si el jugador puede realizar una acción
+    // SISTEMA DE COOLDOWN: Verificar si el jugador puede realizar una acción
+    // Evita spam de movimiento/ataque
     if (_player != nullptr && !_player->CanPerformAction())
     {
         _gameMutex.unlock();
@@ -306,7 +312,8 @@ void Game::MovePlayer(Vector2 direction)
 
     Room* currentRoom = _dungeonMap->GetActiveRoom();
 
-    // Verificar si hay un portal en la nueva posición
+    // ===== DETECCIÓN DE PORTALES =====
+    // Si pisamos un portal, cambiar de sala sin procesar el resto
     bool isPortal = false;
     Portal* portalPtr = nullptr;
 
@@ -324,20 +331,22 @@ void Game::MovePlayer(Vector2 direction)
 
     if (isPortal && portalPtr != nullptr)
     {
-        //Guardar la dirección del portal y desbloquear ANTES de cambiar de sala
+        // IMPORTANTE: Guardar dirección y desbloquear ANTES de cambiar sala
+        // ChangeRoom() necesita adquirir el mutex, evitamos deadlock
         PortalDir portalDirection = portalPtr->GetDirection();
         _player->UpdateActionTime();
-
         _gameMutex.unlock();
-
-        // Ahora cambiar de sala SIN el mutex bloqueado
         ChangeRoom(portalDirection);
         return;
     }
 
+    // ===== SISTEMA DE ATAQUE CON RANGO =====
+    // Permite atacar a distancia según el arma equipada
+    // Espada = rango 1, Lanza = rango 2
     int attackRange = _player->GetAttackRange();
     bool attacked = false;
 
+    // Iterar desde rango 1 hasta el máximo del arma
     for (int range = 1; range <= attackRange && !attacked; range++)
     {
         Vector2 targetPosition = Vector2(
@@ -345,6 +354,8 @@ void Game::MovePlayer(Vector2 direction)
             _playerPosition.Y + (direction.Y * range)
         );
 
+        // VERIFICACIÓN DE OBSTÁCULOS: La lanza NO atraviesa paredes
+        // Comprobar cada casilla intermedia hasta el objetivo
         bool pathBlocked = false;
         for (int checkRange = 1; checkRange <= range; checkRange++)
         {
@@ -363,6 +374,7 @@ void Game::MovePlayer(Vector2 direction)
         if (pathBlocked)
             break;
 
+        // Intentar atacar enemigo en esta posición
         if (_entityManager->TryAttackEnemyAt(targetPosition, _player, currentRoom))
         {
             _player->UpdateActionTime();
@@ -370,6 +382,7 @@ void Game::MovePlayer(Vector2 direction)
             break;
         }
 
+        // Intentar atacar cofre en esta posición
         if (_entityManager->TryAttackChestAt(targetPosition, _player, currentRoom))
         {
             _player->UpdateActionTime();
@@ -378,12 +391,15 @@ void Game::MovePlayer(Vector2 direction)
         }
     }
 
+    // Si se atacó algo, no moverse
     if (attacked)
     {
         _gameMutex.unlock();
         return;
     }
 
+    // ===== ATAQUE CUERPO A CUERPO (Rango 1) =====
+    // Verificar si hay enemigo/cofre en la casilla a la que intentamos movernos
     Enemy* enemyAtPosition = _entityManager->GetEnemyAtPosition(newPosition, currentRoom);
     if (enemyAtPosition != nullptr)
     {
@@ -404,6 +420,8 @@ void Game::MovePlayer(Vector2 direction)
         return;
     }
 
+    // ===== RECOLECCIÓN DE ITEMS =====
+    // Si hay un item en la nueva posición, recogerlo automáticamente
     Item* itemAtPosition = _entityManager->GetItemAtPosition(newPosition, currentRoom);
     if (itemAtPosition != nullptr)
     {
@@ -423,8 +441,10 @@ void Game::MovePlayer(Vector2 direction)
         _entityManager->RemoveItem(itemAtPosition, currentRoom);
     }
 
+    // ===== MOVIMIENTO REAL DEL JUGADOR =====
     Vector2 oldPosition = _playerPosition;
 
+    // Limpiar posición anterior en el mapa
     currentRoom->GetMap()->SafePickNode(oldPosition, [](Node* node) {
         if (node != nullptr)
         {
@@ -432,6 +452,7 @@ void Game::MovePlayer(Vector2 direction)
         }
         });
 
+    // Actualizar posición
     _playerPosition = newPosition;
 
     if (_player != nullptr)
@@ -439,8 +460,10 @@ void Game::MovePlayer(Vector2 direction)
         _player->SetPosition(_playerPosition);
     }
 
+    // Colocar jugador en nueva posición
     UpdatePlayerOnMap();
 
+    // REDIBUJAR: Solo las casillas afectadas (vieja y nueva)
     currentRoom->GetMap()->SafePickNode(oldPosition, [](Node* node) {
         if (node != nullptr)
         {
@@ -455,6 +478,7 @@ void Game::MovePlayer(Vector2 direction)
         }
         });
 
+    // Actualizar tiempo de última acción (cooldown)
     if (_player != nullptr)
     {
         _player->UpdateActionTime();
@@ -469,6 +493,7 @@ void Game::ChangeRoom(PortalDir direction)
 
     Room* oldRoom = _dungeonMap->GetActiveRoom();
 
+    // Calcular coordenadas de la nueva sala según la dirección del portal
     int newX = _dungeonMap->GetCurrentX();
     int newY = _dungeonMap->GetCurrentY();
 
@@ -490,17 +515,21 @@ void Game::ChangeRoom(PortalDir direction)
 
     _gameMutex.unlock();
 
-    // Detener threads
+    // ===== FASE 1: DETENER THREADS =====
+    // CRÍTICO: Detener antes de modificar estado de entidades
+    // Evita race conditions con enemigos moviéndose durante el cambio
     _spawner->Stop();
     _entityManager->StopEnemyMovement();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Asegurar que los threads terminaron
 
     _gameMutex.lock();
 
-    // Desactivar entidades de la sala anterior (NO eliminarlas)
+    // ===== FASE 2: DESACTIVAR SALA ANTERIOR =====
+    // Las entidades NO se eliminan, solo se quitan del mapa visual
+    // Esto permite que sigan existiendo cuando volvamos a esta sala
     if (oldRoom != nullptr)
     {
-        // Limpiar jugador
+        // Limpiar jugador del mapa visual
         oldRoom->GetMap()->SafePickNode(_playerPosition, [](Node* node) {
             if (node != nullptr)
             {
@@ -508,7 +537,7 @@ void Game::ChangeRoom(PortalDir direction)
             }
             });
 
-        // Desactivar entidades (las quita del mapa pero las mantiene en memoria)
+        // Desactivar entidades (quita de mapa pero mantiene en memoria)
         oldRoom->DeactivateEntities();
 
         // Detener movimiento de enemigos de esta sala
@@ -521,21 +550,24 @@ void Game::ChangeRoom(PortalDir direction)
         }
     }
 
-    // Cambiar a la nueva sala
+    // ===== FASE 3: CAMBIAR A NUEVA SALA =====
     _dungeonMap->SetActiveRoom(newX, newY);
     Room* newRoom = _dungeonMap->GetActiveRoom();
 
     if (newRoom != nullptr)
     {
+        // Calcular spawn position: lado opuesto al portal por el que entramos
         PortalDir oppositeDir = GetOppositeDirection(direction);
         _playerPosition = newRoom->GetSpawnPositionFromPortal(oppositeDir);
 
+        // IMPORTANTE: Actualizar posición en el objeto Player
         if (_player != nullptr)
         {
-            _player->SetPosition(_playerPosition);  // IMPORTANTE
+            _player->SetPosition(_playerPosition);
         }
 
-        //Activar entidades de la nueva sala
+        // ===== FASE 4: ACTIVAR ENTIDADES DE NUEVA SALA =====
+        // Coloca todas las entidades guardadas de vuelta en el mapa visual
         newRoom->ActivateEntities();
 
         // Reactivar movimiento de enemigos de esta sala
@@ -547,17 +579,23 @@ void Game::ChangeRoom(PortalDir direction)
             }
         }
 
+        // Colocar jugador en el mapa
         UpdatePlayerOnMap();
 
         _gameMutex.unlock();
 
+        // Limpiar pantalla completa y redibujar (única vez que se hace Clear)
         CC::Clear();
         DrawCurrentRoom();
 
+        // Inicializar sala si es primera vez (spawn inicial de enemigos/cofres)
         InitializeCurrentRoom();
 
-        // CAMBIAR ESTO - actualizar la sala en el EntityManager
+        // ===== FASE 5: REINICIAR THREADS CON NUEVA SALA =====
+        // Actualizar referencia de sala en EntityManager
         _entityManager->SetCurrentRoom(newRoom);
+
+        // Reiniciar movimiento de enemigos con callbacks actualizados
         _entityManager->StartEnemyMovement(
             newRoom,
             [this]() {
@@ -574,6 +612,7 @@ void Game::ChangeRoom(PortalDir direction)
             }
         );
 
+        // Reiniciar spawner con la nueva sala
         _spawner->Start(newRoom);
     }
     else

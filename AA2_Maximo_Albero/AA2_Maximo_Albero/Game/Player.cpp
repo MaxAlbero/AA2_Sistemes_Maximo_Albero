@@ -24,11 +24,18 @@ void Player::SetPosition(Vector2 newPos) {
 bool Player::CanPerformAction()
 {
     Lock();
+
+    // Obtener tiempo actual
     auto currentTime = std::chrono::steady_clock::now();
+
+    // Calcular cuánto tiempo ha pasado desde la última acción
     auto timeSinceLastAction = std::chrono::duration_cast<std::chrono::milliseconds>(
         currentTime - _lastActionTime
     ).count();
+
+    // Verificar si ha pasado el tiempo de cooldown (por defecto 500ms)
     bool canAct = timeSinceLastAction >= _actionCooldownMs;
+
     Unlock();
     return canAct;
 }
@@ -106,21 +113,29 @@ void Player::UsePotion()
     if (_potionCount > 0)
     {
         _potionCount--;
-        _hp += 20; // Recupera 20 HP
+        _hp += 20; // Recupera 20 HP por poción
 
+        // Limitar HP al máximo
         if (_hp > _maxHp)
             _hp = _maxHp;
 
+        // Mostrar feedback visual
         CC::Lock();
         CC::SetPosition(0, 18);  // Posición fija debajo del mapa
-        std::cout << "¡Poción usada! HP: " << _hp << "    " << std::endl;
+        if (_messages != nullptr)
+        {
+            _messages->PushMessage("¡Pocion usada!", 200);
+        }
         CC::Unlock();
     }
     else
     {
+        // No hay pociones disponibles
         CC::Lock();
         CC::SetPosition(0, 18);
-        std::cout << "No tienes pociones" << std::endl;
+        if (_messages != nullptr) {
+            _messages->PushMessage("No tienes pociones", 200);
+        }
         CC::Unlock();
     }
 
@@ -128,10 +143,15 @@ void Player::UsePotion()
 }
 
 
+//   - Espada (_weapon == 0): Rango 1 (solo casilla adyacente)
+//   - Lanza (_weapon == 1): Rango 2 (puede atacar 2 casillas de distancia)
 int Player::GetAttackRange()
 {
     Lock();
-    int range = (_weapon == 0) ? 1 : 2; // Espada = 1, Lanza = 2
+
+    // Determinar rango según arma equipada
+    int range = (_weapon == 0) ? 1 : 2;
+
     Unlock();
     return range;
 }

@@ -23,6 +23,10 @@ void Enemy::SetPosition(Vector2 newPos) {
     _enemyMutex.unlock();
 }
 
+// Verifica si el enemigo puede realizar una acción(moverse o atacar)
+// Mismo sistema de cooldown que utiliza player
+// Cada enemigo tiene su propio _actionCooldownMs independiente
+// USO: En EntityManager::EnemyMovementLoop() antes de mover cada enemigo
 bool Enemy::CanPerformAction()
 {
     _enemyMutex.lock();
@@ -35,6 +39,9 @@ bool Enemy::CanPerformAction()
     return canAct;
 }
 
+
+// Actualiza timestamp de última acción del enemigo, después de moverse o atacar
+// Activa cooldown individual del enemigo
 void Enemy::UpdateActionTime()
 {
     _enemyMutex.lock();
@@ -75,13 +82,12 @@ int Enemy::GetHP() {
     return hp;
 }
 
+// Genera una dirección aleatoria para movimiento de IA básica
+// DIRECCIONES: Arriba, Abajo, Izquierda, Derecha (no diagonales)
+// USO: En EntityManager::EnemyMovementLoop() para decidir hacia dónde moverse
 Vector2 Enemy::GetRandomDirection()
 {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<> dis(0, 3);
-
-    int direction = dis(gen);
+    int direction = rand() % 4;
 
     switch (direction)
     {
@@ -93,17 +99,26 @@ Vector2 Enemy::GetRandomDirection()
     }
 }
 
-// Sistema de threading para movimiento
+// Inicia el thread de movimiento individual del enemigo
+// THREAD: Cada enemigo tiene su propio thread (_movementThread)
+// IMPORTANTE: El thread se crea pero el movimiento real lo gestiona EntityManager
+// PROPÓSITO: Mantener el enemigo "activo" y listo para moverse
 void Enemy::StartMovement()
 {
+    // Evitar crear múltiples threads
     if (_isActive)
         return;
 
     _shouldStop = false;
     _isActive = true;
+
+    // Crear thread que ejecuta MovementLoop()
     _movementThread = new std::thread(&Enemy::MovementLoop, this);
 }
 
+// Detiene el thread de movimiento del enemigo
+// CUÁNDO: 1.Enemigo muere, 2.Jugador sale de la sala (Game::ChangeRoom) o 3.Juego termina
+// THREAD-SAFETY: join() espera a que el thread termine antes de eliminarlo
 void Enemy::StopMovement()
 {
     if (!_isActive)
@@ -122,8 +137,6 @@ void Enemy::StopMovement()
 
     _isActive = false;
 }
-
-bool Enemy::IsActive() const { return _isActive; }
 
 // Esta función será llamada desde el EntityManager
 // Para solicitar un movimiento al enemigo
@@ -145,9 +158,6 @@ void Enemy::RequestMove(std::function<bool(Vector2, Vector2&)> canMoveCallback)
     }
 }
 
-void Enemy::Lock() { _enemyMutex.lock(); }
-void Enemy::Unlock() { _enemyMutex.unlock(); }
-
 Json::Value Enemy::Code() {
     Json::Value json;
     CodeSubClassType<Enemy>(json);
@@ -166,6 +176,10 @@ void Enemy::Decode(Json::Value json) {
     _lastActionTime = std::chrono::steady_clock::now();
 }
 
+//Loop del thread individual del enemigo
+// Este loop NO mueve al enemigo directamente
+// PROPÓSITO: Mantener el thread activo - el movimiento real lo hace EntityManager
+// RAZÓN: Centralizar lógica de colisiones y movimiento en EntityManager
 void Enemy::MovementLoop()
 {
     while (!_shouldStop)

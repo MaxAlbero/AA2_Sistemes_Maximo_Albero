@@ -1,22 +1,28 @@
 #include "SaveManager.h"
 
+// Guarda el estado completo del juego en formato JSON
+// GUARDA:
+//   - Estado del jugador (HP, monedas, pociones, arma, posición)
+//   - Posición actual en el mapamundi
+//   - Estado de TODAS las salas inicializadas con sus entidades
+// THREAD-SAFETY: Protegido con _saveMutex manualmente
 bool SaveManager::SaveGame(DungeonMap* dungeonMap, Player* player)
 {
-    std::lock_guard<std::mutex> lock(_saveMutex);
+    Lock();
 
     try
     {
         if (dungeonMap == nullptr || player == nullptr)
         {
             std::cerr << "Error: DungeonMap o Player es nullptr" << std::endl;
+            Unlock();
             return false;
         }
 
         Json::Value root;
 
-        // Guardar jugador
+        // Serializa posición, HP, inventario, arma equipada del player
         root["player"] = player->Code();
-
 
         CC::Lock();
         CC::SetPosition(15, 11);
@@ -28,7 +34,7 @@ bool SaveManager::SaveGame(DungeonMap* dungeonMap, Player* player)
         root["worldWidth"] = dungeonMap->GetWorldWidth();
         root["worldHeight"] = dungeonMap->GetWorldHeight();
 
-        // Guardar todas las salas (solo las que están inicializadas)
+        // Solo guardar salas que el jugador ha visitado
         Json::Value roomsData;
         for (int y = 0; y < dungeonMap->GetWorldHeight(); y++)
         {
@@ -43,11 +49,12 @@ bool SaveManager::SaveGame(DungeonMap* dungeonMap, Player* player)
         }
         root["rooms"] = roomsData;
 
-        // Escribir al archivo
+        // Escribir al archivo JSON
         std::ofstream file(_saveFilePath);
         if (!file.is_open())
         {
             std::cerr << "Error: No se pudo abrir el archivo para guardar: " << _saveFilePath << std::endl;
+            Unlock();
             return false;
         }
 
@@ -55,34 +62,48 @@ bool SaveManager::SaveGame(DungeonMap* dungeonMap, Player* player)
         file << writer.write(root);
         file.close();
 
+        Unlock();
         return true;
     }
     catch (const Json::Exception& e)
     {
         std::cerr << "Error JSON al guardar: " << e.what() << std::endl;
+        Unlock();
         return false;
     }
     catch (const std::exception& e)
     {
         std::cerr << "Error al guardar la partida: " << e.what() << std::endl;
+        Unlock();
         return false;
     }
     catch (...)
     {
         std::cerr << "Error desconocido al guardar la partida" << std::endl;
+        Unlock();
         return false;
     }
 }
 
+// Carga una partida guardada y reconstruye el estado completo
+// PROCESO:
+//   1. Leer archivo JSON
+//   2. Reconstruir jugador con todos sus stats
+//   3. Reconstruir todas las salas con sus entidades
+//   4. Registrar entidades en EntityManager
+//   5. Establecer sala activa correcta
+// THREAD-SAFETY: Protegido con _saveMutex manualmente
+// IMPORTANTE: Se llama ANTES de iniciar threads, no hay race conditions
 bool SaveManager::LoadGame(DungeonMap* dungeonMap, Player* player, EntityManager* entityManager)
 {
-    std::lock_guard<std::mutex> lock(_saveMutex);
+    Lock();
 
     try
     {
         if (dungeonMap == nullptr || player == nullptr || entityManager == nullptr)
         {
             std::cerr << "Error: DungeonMap, Player o EntityManager es nullptr" << std::endl;
+            Unlock();
             return false;
         }
 
@@ -91,6 +112,7 @@ bool SaveManager::LoadGame(DungeonMap* dungeonMap, Player* player, EntityManager
         if (!file.is_open())
         {
             std::cerr << "Error: No se pudo abrir el archivo de guardado: " << _saveFilePath << std::endl;
+            Unlock();
             return false;
         }
 
@@ -102,6 +124,7 @@ bool SaveManager::LoadGame(DungeonMap* dungeonMap, Player* player, EntityManager
         {
             std::cerr << "Error al parsear JSON: " << reader.getFormattedErrorMessages() << std::endl;
             file.close();
+            Unlock();
             return false;
         }
         file.close();
@@ -127,6 +150,7 @@ bool SaveManager::LoadGame(DungeonMap* dungeonMap, Player* player, EntityManager
             worldHeight != dungeonMap->GetWorldHeight())
         {
             std::cout << "Error: Las dimensiones del mundo guardado no coinciden" << std::endl;
+            Unlock();
             return false;
         }
 
@@ -160,25 +184,33 @@ bool SaveManager::LoadGame(DungeonMap* dungeonMap, Player* player, EntityManager
         dungeonMap->SetActiveRoom(currentX, currentY);
 
         std::cout << "Partida cargada exitosamente desde: " << _saveFilePath << std::endl;
+        Unlock();
         return true;
     }
     catch (const Json::Exception& e)
     {
         std::cerr << "Error JSON al cargar: " << e.what() << std::endl;
+        Unlock();
         return false;
     }
     catch (const std::exception& e)
     {
         std::cerr << "Error al cargar la partida: " << e.what() << std::endl;
+        Unlock();
         return false;
     }
     catch (...)
     {
         std::cerr << "Error desconocido al cargar la partida" << std::endl;
+        Unlock();
         return false;
     }
 }
 
+//Loop que ejecuta autoguardado cada X segundos en thread separado
+// EJECUCIÓN: Thread independiente iniciado por StartAutoSave()
+// Guarda cada 5 segundos por defecto
+// THREAD-SAFETY: SaveGame() ya tiene su propio mutex interno
 void SaveManager::StartAutoSave(DungeonMap* dungeonMap, Player* player, EntityManager* entityManager)
 {
     if (_isAutoSaving)

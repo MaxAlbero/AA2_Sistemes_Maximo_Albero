@@ -631,7 +631,11 @@ bool EntityManager::IsAdjacent(Vector2 pos1, Vector2 pos2)
     return (distX + distY) == 1;
 }
 
-void EntityManager::EnemyMovementLoop()  //  Sin parámetros ahora
+//Loop principal que gestiona el movimiento de TODOS los enemigos activos
+// Thread separado que corre continuamente mientras _movementActive == true
+// Se ejecuta cada 100ms para verificar y mover enemigos
+// THREAD-SAFETY: Usa mutex para acceder a _enemies y coordinar con otras operaciones
+void EntityManager::EnemyMovementLoop()
 {
     while (_movementActive)
     {
@@ -640,7 +644,7 @@ void EntityManager::EnemyMovementLoop()  //  Sin parámetros ahora
         if (!_movementActive)
             break;
 
-        // Obtener sala actual y callbacks de forma segura
+        // Copiar referencias con mutex para evitar problemas si cambian durante ejecución
         Lock();
         Room* room = _currentRoom;
         auto getPlayerPos = _getPlayerPositionCallback;
@@ -654,6 +658,7 @@ void EntityManager::EnemyMovementLoop()  //  Sin parámetros ahora
         // Obtener la posición actual del jugador
         Vector2 currentPlayerPosition = getPlayerPos();
 
+        //Obtener enemigos de la sala actual
         std::vector<Enemy*>& enemies = room->GetEnemies();
 
         for (Enemy* enemy : enemies)  // Usar enemies de la sala actual
@@ -729,6 +734,14 @@ void EntityManager::EnemyMovementLoop()  //  Sin parámetros ahora
     }
 }
 
+//Valida si un enemigo puede moverse a una posición específica
+// Verifica los siguientes casos:
+//   - No hay paredes
+//   - No hay portales
+//   - No está el jugador
+//   - No hay otro enemigo (evita colisiones)
+//   - No hay cofres ni items (pueden bloquear el paso)
+// THREAD-SAFETY: Usa Lock/Unlock para acceder a listas de entidades
 bool EntityManager::CanEnemyMoveTo(Vector2 newPosition, Vector2 currentPosition, Room* room, Vector2 playerPosition)
 {
     if (room == nullptr)

@@ -27,10 +27,10 @@ void Room::RemoveItem(Item* item)
     }
 }
 
-std::vector<Enemy*>& GetEnemies() { return _enemies; }
-std::vector<Chest*>& GetChests() { return _chests; }
-std::vector<Item*>& GetItems() { return _items; }
-
+// Coloca todas las entidades de la sala en el mapa visual
+// Se llama al entrar a una sala (ChangeRoom)
+// Las entidades ya existen en memoria (_enemies, _chests, _items), Esta función solo las hace visibles y las coloca en el NodeMap
+// Permite que enemigos/cofres persistan entre visitas a la sala
 void Room::ActivateEntities()
 {
     // Colocar todas las entidades en el mapa y dibujarlas
@@ -60,6 +60,8 @@ void Room::ActivateEntities()
         if (chest != nullptr)
         {
             Vector2 pos = chest->GetPosition();
+
+            // Colocar enemigo en el nodo del mapa
             _map->SafePickNode(pos, [chest](Node* node) {
                 if (node != nullptr)
                 {
@@ -67,6 +69,7 @@ void Room::ActivateEntities()
                 }
                 });
 
+            // Dibujar el enemigo en pantalla
             _map->SafePickNode(pos, [](Node* node) {
                 if (node != nullptr)
                 {
@@ -98,14 +101,24 @@ void Room::ActivateEntities()
     }
 }
 
+// Quita todas las entidades del mapa visual
+// Se llama al salir de una sala (ChangeRoom)
+// NO elimina las entidades de memoria, solo las quita del NodeMap
+// PROPÓSITO:
+//   - Evitar que se dibujen cuando no están en la sala activa
+//   - Prevenir race conditions con threads que acceden al mapa
+//   - Mantener estado de entidades para cuando volvamos a la sala
 void Room::DeactivateEntities()
 {
-    // Quitar todas las entidades del mapa visual (pero mantenerlas en memoria)
+    // Los enemigos siguen existiendo en _enemies, solo se quitan del mapa
+    // Su thread de movimiento se detiene en Game::ChangeRoom()
     for (Enemy* enemy : _enemies)
     {
         if (enemy != nullptr)
         {
             Vector2 pos = enemy->GetPosition();
+
+            // Quitar referencia del nodo (sin eliminar el enemigo)
             _map->SafePickNode(pos, [](Node* node) {
                 if (node != nullptr)
                 {
@@ -149,7 +162,11 @@ void Room::Draw()
     _map->UnSafeDraw();
 }
 
-// Genera portales basándose en la posición del room en el mundo
+// Crea portales en los bordes de la sala según su posición en el mundo
+// PARÁMETROS:
+//   - worldX, worldY: Coordenadas de esta sala en el mapamundi
+//   - worldWidth, worldHeight: Tamaño total del mapamundi (3x3)
+// LÓGICA: Solo genera portales si hay sala adyacente en esa dirección
 void Room::GeneratePortals(int worldX, int worldY, int worldWidth, int worldHeight)
 {
     int centerX = _size.X / 2;
@@ -209,7 +226,9 @@ void Room::GeneratePortals(int worldX, int worldY, int worldWidth, int worldHeig
     }
 }
 
-// Obtiene la posición de spawn al entrar por un portal
+//Calcula dónde debe aparecer el jugador al entrar por un portal
+// LÓGICA: Spawn en el lado OPUESTO al portal por el que entramos
+// Evita que el jugador aparezca encima del portal y se teleporte inmediatamente
 Vector2 Room::GetSpawnPositionFromPortal(PortalDir fromDirection)
 {
     int centerX = _size.X / 2;

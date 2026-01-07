@@ -8,6 +8,7 @@
 #include "UI.h"
 #include <mutex>
 #include "SaveManager.h"
+#include "../Utils/MessageSystem.h"
 
 class Game
 {
@@ -28,6 +29,7 @@ private:
     Vector2 _playerPosition;
 
     SaveManager* _saveManager;
+    MessageSystem* _messages;
 
     int _currentRoomIndex;
     bool _running;

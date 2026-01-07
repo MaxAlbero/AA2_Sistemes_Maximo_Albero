@@ -36,6 +36,9 @@ public:
     void StartAutoSave(DungeonMap* dungeonMap, Player* player, EntityManager* entityManager); // MODIFICADO
     void StopAutoSave();
 
+    void Lock() { _saveMutex.lock(); }
+    void Unlock() { _saveMutex.unlock(); }
+
 private:
     std::string _saveFilePath;
     int _autoSaveIntervalSeconds;

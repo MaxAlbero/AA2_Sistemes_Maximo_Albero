@@ -70,9 +70,9 @@ public:
 
     void RemoveItem(Item* item);
 
-    std::vector<Enemy*>& GetEnemies();
-    std::vector<Chest*>& GetChests();
-    std::vector<Item*>& GetItems();
+    std::vector<Enemy*>& GetEnemies() { return _enemies; }
+    std::vector<Chest*>& GetChests() { return _chests; }
+    std::vector<Item*>& GetItems() { return _items; }
 
     void ActivateEntities();
 

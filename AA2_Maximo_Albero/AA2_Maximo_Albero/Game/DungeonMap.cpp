@@ -31,11 +31,6 @@ Room* DungeonMap::GetActiveRoom()
     return GetRoom(_currentX, _currentY);
 }
 
-int DungeonMap::GetCurrentX() const { return _currentX; }
-int DungeonMap::GetCurrentY() const { return _currentY; }
-int DungeonMap::GetWorldWidth() const { return _worldWidth; }
-int DungeonMap::GetWorldHeight() const { return _worldHeight; }
-
 // Verifica si hay un room en una dirección específica
 bool DungeonMap::HasRoomInDirection(PortalDir direction)
 {
