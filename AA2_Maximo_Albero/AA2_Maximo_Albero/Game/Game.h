@@ -35,6 +35,8 @@ private:
     bool _running;
     std::mutex _gameMutex;
 
+    bool _gameOver;
+
     void InitializeDungeon();
     void DrawCurrentRoom();
 
@@ -57,4 +59,6 @@ private:
     void OnMoveDown();
     void OnMoveLeft();
     void OnMoveRight();
+
+    void CheckPlayerDeath();
 };

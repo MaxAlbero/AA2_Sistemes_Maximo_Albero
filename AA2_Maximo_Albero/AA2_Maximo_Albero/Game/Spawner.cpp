@@ -47,8 +47,10 @@ void Spawner::Stop()
     }
 
     _running = false;
+    _spawnerMutex.unlock(); // IMPORTANTE: Desbloquear ANTES de join
 
-    _spawnerMutex.unlock();
+    // Esperar un poco para que el loop detecte el cambio
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
     if (_spawnThread != nullptr)
     {

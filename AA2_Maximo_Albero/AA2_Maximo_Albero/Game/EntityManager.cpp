@@ -220,7 +220,8 @@ int EntityManager::GetEnemyCount()
 // Sistema de movimiento de enemigos
 void EntityManager::StartEnemyMovement(Room* room, std::function<Vector2()> getPlayerPositionCallback, std::function<void(Enemy*)> onEnemyAttackPlayer)
 {
-    if (_movementActive)
+    // Asegurarse de que no hay otro movimiento activo
+    if (_movementActive || _isStopping)
         return;
 
     Lock();
@@ -235,19 +236,40 @@ void EntityManager::StartEnemyMovement(Room* room, std::function<Vector2()> getP
 
 void EntityManager::StopEnemyMovement()
 {
-    if (!_movementActive)
+    // Verificar si ya se está deteniendo para evitar múltiples llamadas
+    bool expected = false;
+    if (!_isStopping.compare_exchange_strong(expected, true))
+    {
+        // Otro thread ya está deteniendo el movimiento
         return;
+    }
 
+    if (!_movementActive)
+    {
+        _isStopping = false;
+        return;
+    }
+
+    // Señalar al loop que debe detenerse
     _movementActive = false;
 
+    // Esperar a que el loop detecte el cambio (sin bloquear mutex)
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+    // Ahora sí, hacer join del thread
     if (_enemyMovementThread != nullptr)
     {
         if (_enemyMovementThread->joinable())
+        {
             _enemyMovementThread->join();
+        }
 
         delete _enemyMovementThread;
         _enemyMovementThread = nullptr;
     }
+
+    // Restablecer flag de stopping
+    _isStopping = false;
 }
 
 bool EntityManager::IsPositionOccupiedByChest(Vector2 position)
@@ -644,7 +666,6 @@ void EntityManager::EnemyMovementLoop()
         if (!_movementActive)
             break;
 
-        // Copiar referencias con mutex para evitar problemas si cambian durante ejecución
         Lock();
         Room* room = _currentRoom;
         auto getPlayerPos = _getPlayerPositionCallback;
@@ -655,15 +676,15 @@ void EntityManager::EnemyMovementLoop()
         if (room == nullptr)
             continue;
 
-        // Obtener la posición actual del jugador
         Vector2 currentPlayerPosition = getPlayerPos();
-
-        //Obtener enemigos de la sala actual
         std::vector<Enemy*>& enemies = room->GetEnemies();
 
-        for (Enemy* enemy : enemies)  // Usar enemies de la sala actual
+        for (Enemy* enemy : enemies)
         {
-            // Verificar si el enemigo está en la lista global
+            // NUEVO: Verificar si el movimiento sigue activo antes de procesar cada enemigo
+            if (!_movementActive)
+                break;
+
             bool isInGlobalList = false;
             Lock();
             for (Enemy* globalEnemy : _enemies)

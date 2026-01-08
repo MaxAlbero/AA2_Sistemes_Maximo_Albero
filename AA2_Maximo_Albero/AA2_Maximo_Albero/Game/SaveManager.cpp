@@ -269,6 +269,12 @@ void SaveManager::AutoSaveLoop()
         if (!_isAutoSaving)
             break;
 
+        // NUEVO: Verificar que las referencias sigan siendo válidas
+        if (_dungeonMapRef == nullptr || _playerRef == nullptr)
+        {
+            break;
+        }
+
         // Realizar guardado automático
         if (SaveGame(_dungeonMapRef, _playerRef))
         {

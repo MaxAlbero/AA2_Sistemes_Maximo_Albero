@@ -37,6 +37,8 @@ public:
         _lastActionTime = std::chrono::steady_clock::now();
     }
 
+    ~Player();
+
     void Draw(Vector2 pos) override;
     Vector2 GetPosition();
     void SetPosition(Vector2 newPos);

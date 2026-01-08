@@ -1,5 +1,9 @@
 #include "Player.h"
 
+Player::~Player() {
+
+}
+
 void Player::Draw(Vector2 pos)
 {
     CC::Lock();
@@ -110,31 +114,27 @@ void Player::UsePotion()
 {
     Lock();
 
+    // NUEVO: No hacer nada si está muerto
+    if (_hp <= 0)
+    {
+        Unlock();
+        return;
+    }
+
     if (_potionCount > 0)
     {
         _potionCount--;
-        _hp += 20; // Recupera 20 HP por poción
+        _hp += 20;
 
-        // Limitar HP al máximo
         if (_hp > _maxHp)
             _hp = _maxHp;
 
         // Mostrar feedback visual
         CC::Lock();
-        CC::SetPosition(0, 18);  // Posición fija debajo del mapa
+        CC::SetPosition(0, 18);
         if (_messages != nullptr)
         {
-            _messages->PushMessage("¡Pocion usada!", 200);
-        }
-        CC::Unlock();
-    }
-    else
-    {
-        // No hay pociones disponibles
-        CC::Lock();
-        CC::SetPosition(0, 18);
-        if (_messages != nullptr) {
-            _messages->PushMessage("No tienes pociones", 200);
+            _messages->PushMessage("¡Pocion usada!", 2);
         }
         CC::Unlock();
     }

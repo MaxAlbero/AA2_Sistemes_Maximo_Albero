@@ -28,6 +28,7 @@ private:
     // Thread para gestionar movimiento de enemigos
     std::thread* _enemyMovementThread;
     std::atomic<bool> _movementActive;
+    std::atomic<bool> _isStopping;
 
     Room* _currentRoom;
     std::function<Vector2()> _getPlayerPositionCallback;

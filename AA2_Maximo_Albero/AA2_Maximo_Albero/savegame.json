@@ -1,48 +1,17 @@
 {
    "currentX" : 1,
-   "currentY" : 0,
+   "currentY" : 1,
    "player" : {
       "ICodableType" : "class Player",
-      "coins" : 10,
-      "hp" : 50,
+      "coins" : 0,
+      "hp" : 20,
       "maxHp" : 50,
-      "posX" : 13,
-      "posY" : 4,
-      "potions" : 0,
+      "posX" : 9,
+      "posY" : 3,
+      "potions" : 1,
       "weapon" : 0
    },
    "rooms" : {
-      "0" : {
-         "1" : {
-            "ICodableType" : "class Room",
-            "chests" : [],
-            "enemies" : [
-               {
-                  "ICodableType" : "class Enemy",
-                  "damage" : 10,
-                  "hp" : 30,
-                  "posX" : 4,
-                  "posY" : 8
-               },
-               {
-                  "ICodableType" : "class Enemy",
-                  "damage" : 10,
-                  "hp" : 30,
-                  "posX" : 12,
-                  "posY" : 1
-               },
-               {
-                  "ICodableType" : "class Enemy",
-                  "damage" : 10,
-                  "hp" : 30,
-                  "posX" : 6,
-                  "posY" : 3
-               }
-            ],
-            "initialized" : true,
-            "items" : []
-         }
-      },
       "1" : {
          "1" : {
             "ICodableType" : "class Room",
@@ -51,8 +20,8 @@
                   "ICodableType" : "class Chest",
                   "broken" : false,
                   "hp" : 20,
-                  "posX" : 11,
-                  "posY" : 3
+                  "posX" : 5,
+                  "posY" : 2
                }
             ],
             "enemies" : [
@@ -60,8 +29,15 @@
                   "ICodableType" : "class Enemy",
                   "damage" : 10,
                   "hp" : 30,
-                  "posX" : 5,
+                  "posX" : 8,
                   "posY" : 3
+               },
+               {
+                  "ICodableType" : "class Enemy",
+                  "damage" : 10,
+                  "hp" : 30,
+                  "posX" : 8,
+                  "posY" : 1
                }
             ],
             "initialized" : true,

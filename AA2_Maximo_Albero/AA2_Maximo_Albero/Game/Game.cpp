@@ -14,6 +14,7 @@ Game::Game()
     _playerPosition = Vector2(1, 1);
     _currentRoomIndex = 0;
     _running = false;
+    _gameOver = false;
     _messages = new MessageSystem();
 
     _saveManager = new SaveManager("savegame.json", 5); // Autoguardado cada 5 segundos
@@ -195,9 +196,13 @@ void Game::Start()
             return pos;
         },
         [this](Enemy* enemy) {
+            if (this->_gameOver || this->_player == nullptr || !this->_player->IsAlive())
+                return;
+
             if (enemy != nullptr && this->_player != nullptr)
             {
                 enemy->Attack(this->_player);
+                this->CheckPlayerDeath();
             }
         }
     );
@@ -226,18 +231,32 @@ void Game::Stop()
     }
 
     _running = false;
+    _gameMutex.unlock();
 
     // Detener autoguardado PRIMERO
     _saveManager->StopAutoSave();
 
+    // Detener sistema de input
     _inputSystem->StopListen();
+
+    // Detener movimiento de enemigos
     _entityManager->StopEnemyMovement();
+
+    // Detener spawner
     _spawner->Stop();
+
+    // NUEVO: Detener sistema de mensajes si tiene threads
+    if (_messages != nullptr)
+    {
+        _messages->Stop(); // Asegúrate de implementar esto si MessageSystem usa threads
+    }
+
+    // Detener UI
     _ui->Stop();
 
-    _gameMutex.unlock();
+    // Pausa para asegurar que todos los threads terminaron
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 }
-
 
 void Game::DrawCurrentRoom()
 {
@@ -287,9 +306,16 @@ void Game::MovePlayer(Vector2 direction)
 {
     _gameMutex.lock();
 
-    if (!_running)
+    if (_gameOver || !_running)
     {
         _gameMutex.unlock();
+        return;
+    }
+
+    if (_player == nullptr || !_player->IsAlive())
+    {
+        _gameMutex.unlock();
+        CheckPlayerDeath();
         return;
     }
 
@@ -665,4 +691,48 @@ PortalDir Game::GetOppositeDirection(PortalDir dir)
         return PortalDir::Up;
     }
     return PortalDir::Left;
+}
+
+void Game::CheckPlayerDeath()
+{
+    if (_player == nullptr)
+        return;
+
+    // Verificar si el jugador está muerto
+    if (!_player->IsAlive())
+    {
+        _gameMutex.lock();
+
+        // Evitar múltiples game overs
+        if (!_gameOver)
+        {
+            _gameOver = true;
+            _gameMutex.unlock(); // CRÍTICO: Desbloquear ANTES de operaciones pesadas
+
+            // Mostrar mensaje de Game Over
+            if (_messages != nullptr)
+            {
+                _messages->PushMessage("GAME OVER - El jugador ha muerto", 5);
+            }
+
+            CC::Lock();
+            CC::SetPosition(0, 15);
+            CC::SetColor(CC::DARKRED);
+            std::cout << "=== GAME OVER ===" << std::endl;
+            CC::SetPosition(0, 16);
+            std::cout << "El jugador ha muerto. Cerrando juego..." << std::endl;
+            CC::SetColor(CC::WHITE);
+            CC::Unlock();
+
+            // Esperar un momento para que el jugador vea el mensaje
+            std::this_thread::sleep_for(std::chrono::seconds(2)); // Reducido de 3 a 2
+
+            // Detener el juego (sin mutex, Stop() lo maneja)
+            Stop();
+        }
+        else
+        {
+            _gameMutex.unlock();
+        }
+    }
 }
