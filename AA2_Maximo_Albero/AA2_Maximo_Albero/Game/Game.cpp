@@ -191,18 +191,33 @@ void Game::Start()
         currentRoom,
         [this]() {
             this->_gameMutex.lock();
+            
+            if (this->_gameOver || this->_player == nullptr)
+            {
+                this->_gameMutex.unlock();
+                return Vector2(-1000, -1000);  // Posición imposible
+            }
+
             Vector2 pos = this->_playerPosition;
             this->_gameMutex.unlock();
             return pos;
         },
         [this](Enemy* enemy) {
-            if (this->_gameOver || this->_player == nullptr || !this->_player->IsAlive())
+            if (this->_gameOver)
                 return;
 
-            if (enemy != nullptr && this->_player != nullptr)
+            if (this->_player == nullptr || !this->_player->IsAlive())
+                return;
+
+            if (enemy != nullptr)
             {
                 enemy->Attack(this->_player);
-                this->CheckPlayerDeath();
+
+                // Verificar muerte DESPUÉS del ataque
+                if (this->_player != nullptr && !this->_player->IsAlive())
+                {
+                    this->CheckPlayerDeath();
+                }
             }
         }
     );
@@ -315,7 +330,6 @@ void Game::MovePlayer(Vector2 direction)
     if (_player == nullptr || !_player->IsAlive())
     {
         _gameMutex.unlock();
-        CheckPlayerDeath();
         return;
     }
 
@@ -707,28 +721,13 @@ void Game::CheckPlayerDeath()
         if (!_gameOver)
         {
             _gameOver = true;
-            _gameMutex.unlock(); // CRÍTICO: Desbloquear ANTES de operaciones pesadas
+            _gameMutex.unlock(); // Desbloquear ANTES de operaciones pesadas
 
             // Mostrar mensaje de Game Over
             if (_messages != nullptr)
             {
                 _messages->PushMessage("GAME OVER - El jugador ha muerto", 5);
             }
-
-            CC::Lock();
-            CC::SetPosition(0, 15);
-            CC::SetColor(CC::DARKRED);
-            std::cout << "=== GAME OVER ===" << std::endl;
-            CC::SetPosition(0, 16);
-            std::cout << "El jugador ha muerto. Cerrando juego..." << std::endl;
-            CC::SetColor(CC::WHITE);
-            CC::Unlock();
-
-            // Esperar un momento para que el jugador vea el mensaje
-            std::this_thread::sleep_for(std::chrono::seconds(2)); // Reducido de 3 a 2
-
-            // Detener el juego (sin mutex, Stop() lo maneja)
-            Stop();
         }
         else
         {

@@ -666,55 +666,79 @@ void EntityManager::EnemyMovementLoop()
         if (!_movementActive)
             break;
 
+        // ===== OBTENER REFERENCIAS DE FORMA SEGURA =====
         Lock();
         Room* room = _currentRoom;
         auto getPlayerPos = _getPlayerPositionCallback;
         auto onAttack = _onEnemyAttackPlayer;
+
+        // COPIAR LISTA DE ENEMIGOS PARA EVITAR RACE CONDITIONS
         std::vector<Enemy*> enemiesCopy = _enemies;
         Unlock();
 
         if (room == nullptr)
             continue;
 
+        // Obtener posición del jugador
         Vector2 currentPlayerPosition = getPlayerPos();
-        std::vector<Enemy*>& enemies = room->GetEnemies();
 
-        for (Enemy* enemy : enemies)
+        // VERIFICAR POSICIÓN INVÁLIDA (indica game over)
+        if (currentPlayerPosition.X == -1000 && currentPlayerPosition.Y == -1000)
         {
-            // NUEVO: Verificar si el movimiento sigue activo antes de procesar cada enemigo
+            break;  // Salir del loop, el juego terminó
+        }
+
+        // ITERAR SOBRE LA COPIA, NO SOBRE room->GetEnemies()
+        for (Enemy* enemy : enemiesCopy)
+        {
             if (!_movementActive)
                 break;
 
-            bool isInGlobalList = false;
+            // VERIFICAR QUE EL ENEMIGO AÚN EXISTA
+            if (enemy == nullptr)
+                continue;
+
+            // VERIFICAR SI ESTÁ EN LA LISTA GLOBAL (thread-safe)
+            bool isValid = false;
             Lock();
-            for (Enemy* globalEnemy : _enemies)
-            {
-                if (globalEnemy == enemy)
-                {
-                    isInGlobalList = true;
-                    break;
-                }
-            }
+            auto it = std::find(_enemies.begin(), _enemies.end(), enemy);
+            isValid = (it != _enemies.end());
             Unlock();
 
-            if (!isInGlobalList || !enemy->IsAlive() || !enemy->CanPerformAction())
+            if (!isValid)
+                continue;  // Enemigo fue eliminado
+
+            // Verificar si puede actuar
+            if (!enemy->IsAlive() || !enemy->CanPerformAction())
                 continue;
 
             Vector2 currentPos = enemy->GetPosition();
 
+            // ===== SISTEMA DE ATAQUE =====
             if (IsAdjacent(currentPos, currentPlayerPosition))
             {
-                // El jugador está adyacente - ATACAR
+                // ATACAR - el callback verifica _gameOver internamente
                 onAttack(enemy);
                 enemy->UpdateActionTime();
                 continue;
             }
 
+            // ===== SISTEMA DE MOVIMIENTO =====
             Vector2 direction = enemy->GetRandomDirection();
             Vector2 newPos = currentPos + direction;
 
             if (CanEnemyMoveTo(newPos, currentPos, room, currentPlayerPosition))
             {
+                // Verificar de nuevo que el enemigo existe antes de moverlo
+                Lock();
+                auto it = std::find(_enemies.begin(), _enemies.end(), enemy);
+                if (it == _enemies.end())
+                {
+                    Unlock();
+                    continue;  // Enemigo fue eliminado mientras verificábamos
+                }
+                Unlock();
+
                 // Limpiar posición anterior
                 room->GetMap()->SafePickNode(currentPos, [](Node* node) {
                     if (node != nullptr)
@@ -723,10 +747,10 @@ void EntityManager::EnemyMovementLoop()
                     }
                     });
 
-                // Actualizar posición del enemigo
+                // Actualizar posición
                 enemy->SetPosition(newPos);
 
-                // Colocar enemigo en nueva posición
+                // Colocar en nueva posición
                 room->GetMap()->SafePickNode(newPos, [enemy](Node* node) {
                     if (node != nullptr)
                     {
@@ -734,7 +758,7 @@ void EntityManager::EnemyMovementLoop()
                     }
                     });
 
-                // Redibujar ambas posiciones
+                // Redibujar
                 room->GetMap()->SafePickNode(currentPos, [](Node* node) {
                     if (node != nullptr)
                     {

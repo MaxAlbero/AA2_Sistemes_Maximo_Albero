@@ -4,10 +4,10 @@
    "player" : {
       "ICodableType" : "class Player",
       "coins" : 0,
-      "hp" : 20,
+      "hp" : 0,
       "maxHp" : 50,
-      "posX" : 9,
-      "posY" : 3,
+      "posX" : 1,
+      "posY" : 4,
       "potions" : 1,
       "weapon" : 0
    },
@@ -20,8 +20,15 @@
                   "ICodableType" : "class Chest",
                   "broken" : false,
                   "hp" : 20,
-                  "posX" : 5,
+                  "posX" : 11,
                   "posY" : 2
+               },
+               {
+                  "ICodableType" : "class Chest",
+                  "broken" : false,
+                  "hp" : 20,
+                  "posX" : 3,
+                  "posY" : 6
                }
             ],
             "enemies" : [
@@ -29,15 +36,15 @@
                   "ICodableType" : "class Enemy",
                   "damage" : 10,
                   "hp" : 30,
-                  "posX" : 8,
+                  "posX" : 1,
                   "posY" : 3
                },
                {
                   "ICodableType" : "class Enemy",
                   "damage" : 10,
                   "hp" : 30,
-                  "posX" : 8,
-                  "posY" : 1
+                  "posX" : 6,
+                  "posY" : 7
                }
             ],
             "initialized" : true,

@@ -19,6 +19,8 @@ public:
     void Start();
     void Stop();
 
+    bool IsGameOver() const { return _gameOver; }
+
 private:
     DungeonMap* _dungeonMap;
     InputSystem* _inputSystem;
