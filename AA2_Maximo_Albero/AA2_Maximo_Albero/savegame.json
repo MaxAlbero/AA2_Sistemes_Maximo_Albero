@@ -1,42 +1,80 @@
 {
-   "currentX" : 1,
-   "currentY" : 1,
+   "currentX" : 0,
+   "currentY" : 2,
    "player" : {
       "ICodableType" : "class Player",
-      "coins" : 0,
+      "coins" : 40,
       "hp" : 0,
       "maxHp" : 50,
-      "posX" : 1,
-      "posY" : 4,
-      "potions" : 1,
+      "posX" : 5,
+      "posY" : 5,
+      "potions" : 3,
       "weapon" : 0
    },
    "rooms" : {
       "1" : {
-         "1" : {
+         "0" : {
             "ICodableType" : "class Room",
-            "chests" : [
-               {
-                  "ICodableType" : "class Chest",
-                  "broken" : false,
-                  "hp" : 20,
-                  "posX" : 11,
-                  "posY" : 2
-               },
-               {
-                  "ICodableType" : "class Chest",
-                  "broken" : false,
-                  "hp" : 20,
-                  "posX" : 3,
-                  "posY" : 6
-               }
-            ],
+            "chests" : [],
             "enemies" : [
                {
                   "ICodableType" : "class Enemy",
                   "damage" : 10,
                   "hp" : 30,
-                  "posX" : 1,
+                  "posX" : 2,
+                  "posY" : 8
+               },
+               {
+                  "ICodableType" : "class Enemy",
+                  "damage" : 10,
+                  "hp" : 0,
+                  "posX" : 8,
+                  "posY" : 4
+               },
+               {
+                  "ICodableType" : "class Enemy",
+                  "damage" : 10,
+                  "hp" : 0,
+                  "posX" : 5,
+                  "posY" : 7
+               }
+            ],
+            "initialized" : true,
+            "items" : []
+         },
+         "1" : {
+            "ICodableType" : "class Room",
+            "chests" : [],
+            "enemies" : [
+               {
+                  "ICodableType" : "class Enemy",
+                  "damage" : 10,
+                  "hp" : 0,
+                  "posX" : 7,
+                  "posY" : 5
+               }
+            ],
+            "initialized" : true,
+            "items" : [
+               {
+                  "ICodableType" : "class Item",
+                  "posX" : 15,
+                  "posY" : 5,
+                  "type" : 2
+               }
+            ]
+         }
+      },
+      "2" : {
+         "0" : {
+            "ICodableType" : "class Room",
+            "chests" : [],
+            "enemies" : [
+               {
+                  "ICodableType" : "class Enemy",
+                  "damage" : 10,
+                  "hp" : 30,
+                  "posX" : 8,
                   "posY" : 3
                },
                {
@@ -44,7 +82,7 @@
                   "damage" : 10,
                   "hp" : 30,
                   "posX" : 6,
-                  "posY" : 7
+                  "posY" : 5
                }
             ],
             "initialized" : true,

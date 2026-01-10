@@ -671,9 +671,6 @@ void EntityManager::EnemyMovementLoop()
         Room* room = _currentRoom;
         auto getPlayerPos = _getPlayerPositionCallback;
         auto onAttack = _onEnemyAttackPlayer;
-
-        // COPIAR LISTA DE ENEMIGOS PARA EVITAR RACE CONDITIONS
-        std::vector<Enemy*> enemiesCopy = _enemies;
         Unlock();
 
         if (room == nullptr)
@@ -688,8 +685,11 @@ void EntityManager::EnemyMovementLoop()
             break;  // Salir del loop, el juego terminó
         }
 
+        // COPIAR LISTA DE ENEMIGOS PARA EVITAR RACE CONDITIONS
+        std::vector<Enemy*> enemiesInRoom = room->GetEnemies();
+
         // ITERAR SOBRE LA COPIA, NO SOBRE room->GetEnemies()
-        for (Enemy* enemy : enemiesCopy)
+        for (Enemy* enemy : enemiesInRoom)
         {
             if (!_movementActive)
                 break;

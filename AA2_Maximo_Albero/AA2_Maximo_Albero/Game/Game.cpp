@@ -134,7 +134,6 @@ void Game::Start()
     // Si no se cargó, crear nueva partida
     if (!loadedGame)
     {
-        std::cout << "Iniciando nueva partida..." << std::endl;
 
         // AHORA SÍ establece la sala inicial para nueva partida
         _dungeonMap->SetActiveRoom(1, 1);
