@@ -138,6 +138,8 @@ void Game::Start()
                     node->SetContent(this->_player);
                 }
                 });
+
+            _spawner->SpawnInitialEntities(currentRoom);
         }
     }
 
@@ -552,6 +554,8 @@ void Game::ChangeRoom(PortalDir direction)
         {
             _player->SetPosition(_playerPosition);
         }
+
+        _spawner->SpawnInitialEntities(newRoom);
 
         // ===== FASE 4: ACTIVAR ENTIDADES DE NUEVA SALA =====
         // Coloca todas las entidades guardadas de vuelta en el mapa visual

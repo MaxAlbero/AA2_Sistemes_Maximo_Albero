@@ -178,3 +178,9 @@ bool Spawner::IsPositionValid(Vector2 position)
 
     return isValid;
 }
+
+void Spawner::SpawnInitialEntities(Room* room)
+{
+    for (int i = 0; i < 3; i++)
+        SpawnRandomEntity();
+}

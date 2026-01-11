@@ -63,34 +63,39 @@ void EntityManager::SpawnItem(Vector2 position, ItemType type, Room* room)
 // ATAQUE UNIFICADO
 // ======================
 
-bool EntityManager::TryAttackAt(Vector2 position, Player* attacker, Room* room)
+bool EntityManager::TryAttackAt(Vector2 pos, IAttacker* attacker, Room* room)
 {
-    if (!room || !attacker) return false;
-
-    // Intentar atacar enemigo
-    if (Enemy* enemy = room->GetEnemyAt(position))
+    Enemy* enemy = room->GetEnemyAt(pos);
+    if (enemy)
     {
         attacker->Attack(enemy);
 
         if (!enemy->IsAlive())
-            HandleEnemyDeath(enemy, room);
-
+        {
+            ClearMapPosition(room, pos);
+            room->RemoveEnemy(enemy);
+            delete enemy;
+        }
         return true;
     }
 
-    // Intentar atacar cofre
-    if (Chest* chest = room->GetChestAt(position))
+    Chest* chest = room->GetChestAt(pos);
+    if (chest)
     {
         attacker->Attack(chest);
 
         if (chest->IsBroken())
-            HandleChestDeath(chest, room);
-
+        {
+            ClearMapPosition(room, pos);
+            room->RemoveChest(chest);
+            delete chest;
+        }
         return true;
     }
 
     return false;
 }
+
 
 // ======================
 // ELIMINACIONES
@@ -209,7 +214,7 @@ bool EntityManager::IsPositionBlocked(Vector2 position, Room* room)
     room->GetMap()->SafePickNode(position, [&](Node* node) {
         if (!node) return;
 
-        if (node->GetContent<Wall>() || node->GetContent<Portal>())
+        if (node->GetContent<Wall>())
             blocked = true;
         });
 

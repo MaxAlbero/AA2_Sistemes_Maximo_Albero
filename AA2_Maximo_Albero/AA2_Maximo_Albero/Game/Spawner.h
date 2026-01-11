@@ -25,6 +25,8 @@ public:
     void Start(Room* room);
     void Stop();
 
+    void SpawnInitialEntities(Room* room);
+
 private:
     EntityManager* _entityManager;
     Room* _currentRoom;

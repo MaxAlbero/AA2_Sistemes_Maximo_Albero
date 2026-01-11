@@ -45,7 +45,7 @@ public:
     void SpawnItem(Vector2 position, ItemType type, Room* room);
 
     // Ataques unificados
-    bool TryAttackAt(Vector2 position, Player* attacker, Room* room);
+    bool TryAttackAt(Vector2 pos, IAttacker* attacker, Room* room);
 
     // Movimiento enemigos
     void StartEnemyMovement(Room* room,
