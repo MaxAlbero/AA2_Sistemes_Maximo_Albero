@@ -48,8 +48,6 @@ void Game::InitializeCurrentRoom()
     _entityManager->InitializeRoomEntities(currentRoom, currentX, currentY);
 }
 
-// ===== MÉTODOS AUXILIARES PARA REDUCIR DUPLICACIÓN =====
-
 void Game::CreateWorldRooms(Vector2 roomSize)
 {
     for (int y = 0; y < 3; y++)
@@ -73,9 +71,7 @@ void Game::ActivateRoomEntities(Room* room)
     for (Enemy* enemy : room->GetEnemies())
     {
         if (enemy != nullptr)
-        {
             enemy->StartMovement();
-        }
     }
 }
 
@@ -89,9 +85,7 @@ void Game::DeactivateRoomEntities(Room* room)
     for (Enemy* enemy : room->GetEnemies())
     {
         if (enemy != nullptr)
-        {
             enemy->StopMovement();
-        }
     }
 }
 
@@ -103,9 +97,7 @@ void Game::PlacePlayerOnMap(Vector2 position)
 
     currentRoom->GetMap()->SafePickNode(position, [this](Node* node) {
         if (node != nullptr)
-        {
             node->SetContent(this->_player);
-        }
         });
 }
 
@@ -117,9 +109,7 @@ void Game::SetupInputListeners()
     _inputSystem->AddListener(K_D, [this]() { this->OnMoveRight(); });
     _inputSystem->AddListener(K_SPACE, [this]() {
         if (this->_player != nullptr)
-        {
             this->_player->UsePotion();
-        }
         });
 }
 
@@ -154,9 +144,7 @@ std::function<void(Enemy*)> Game::GetEnemyAttackCallback()
             enemy->Attack(this->_player);
 
             if (this->_player != nullptr && !this->_player->IsAlive())
-            {
                 this->CheckPlayerDeath();
-            }
         }
         };
 }
@@ -165,8 +153,6 @@ bool Game::LoadSavedGame()
 {
     if (!_saveManager->SaveFileExists())
         return false;
-
-    std::cout << "Partida guardada encontrada. Cargando..." << std::endl;
 
     _player = new Player(_playerPosition, _messages);
 
@@ -181,16 +167,11 @@ bool Game::LoadSavedGame()
             PlacePlayerOnMap(_playerPosition);
         }
 
-        std::cout << " Partida cargada exitosamente en sala ("
-            << _dungeonMap->GetCurrentX() << ", "
-            << _dungeonMap->GetCurrentY() << "), posición jugador ("
-            << _playerPosition.X << ", " << _playerPosition.Y << ")" << std::endl;
-
         return true;
     }
     else
     {
-        std::cerr << " Error al cargar la partida. Iniciando nueva partida..." << std::endl;
+        std::cout << " Error al cargar la partida. Iniciando nueva partida..." << std::endl;
         delete _player;
         _player = nullptr;
         return false;
@@ -230,9 +211,7 @@ void Game::Start()
 
     // Si no se cargó, crear nueva partida
     if (!loadedGame)
-    {
         StartNewGame();
-    }
 
     _ui->SetMapSize(Vector2(20, 10));
     _messages->Start();
@@ -257,9 +236,7 @@ void Game::Start()
     );
 
     if (!loadedGame)
-    {
         InitializeCurrentRoom();
-    }
 
     _spawner->Start(currentRoom);
     _saveManager->StartAutoSave(_dungeonMap, _player, _entityManager);
@@ -285,9 +262,7 @@ void Game::Stop()
     _spawner->Stop();
 
     if (_messages != nullptr)
-    {
         _messages->Stop();
-    }
 
     _ui->Stop();
 
@@ -298,9 +273,7 @@ void Game::DrawCurrentRoom()
 {
     Room* currentRoom = _dungeonMap->GetActiveRoom();
     if (currentRoom != nullptr)
-    {
         currentRoom->Draw();
-    }
 }
 
 bool Game::CanMoveTo(Vector2 position)
@@ -330,9 +303,7 @@ void Game::UpdatePlayerOnMap()
 
     currentRoom->GetMap()->SafePickNode(_playerPosition, [&](Node* node) {
         if (node != nullptr)
-        {
             node->SetContent(_player);
-        }
         });
 }
 
@@ -344,9 +315,7 @@ void Game::RedrawPosition(Vector2 position)
 
     currentRoom->GetMap()->SafePickNode(position, [](Node* node) {
         if (node != nullptr)
-        {
             node->DrawContent(Vector2(0, 0));
-        }
         });
 }
 
@@ -580,9 +549,7 @@ void Game::ChangeRoom(PortalDir direction)
     {
         oldRoom->GetMap()->SafePickNode(_playerPosition, [](Node* node) {
             if (node != nullptr)
-            {
                 node->SetContent(nullptr);
-            }
             });
 
         DeactivateRoomEntities(oldRoom);
@@ -664,9 +631,7 @@ void Game::CheckPlayerDeath()
         _gameMutex.unlock();
 
         if (_messages != nullptr)
-        {
             _messages->PushMessage("GAME OVER - El jugador ha muerto", 5);
-        }
     }
     else
     {
