@@ -620,21 +620,19 @@ PortalDir Game::GetOppositeDirection(PortalDir dir)
 
 void Game::CheckPlayerDeath()
 {
-    if (_player == nullptr || _player->IsAlive())
-        return;
-
     _gameMutex.lock();
 
-    if (!_gameOver)
+    // Verificar dentro del mutex
+    if (_player == nullptr || _player->IsAlive() || _gameOver)
     {
-        _gameOver = true;
         _gameMutex.unlock();
+        return;
+    }
 
-        if (_messages != nullptr)
-            _messages->PushMessage("GAME OVER - El jugador ha muerto", 5);
-    }
-    else
-    {
-        _gameMutex.unlock();
-    }
+    _gameOver = true;
+    _gameMutex.unlock();
+
+    // Mensaje fuera del mutex (no afecta estado compartido)
+    if (_messages != nullptr)
+        _messages->PushMessage("GAME OVER - El jugador ha muerto", 5);
 }
