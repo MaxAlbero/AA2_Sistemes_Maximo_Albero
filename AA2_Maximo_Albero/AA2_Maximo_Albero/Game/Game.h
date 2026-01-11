@@ -75,6 +75,7 @@ private:
     // ===== GESTIÓN DE SALAS =====
     void ChangeRoom(PortalDir direction);
     PortalDir GetOppositeDirection(PortalDir dir);
+    void StartRoomEnemyThreads(Room* room);
 
     // ===== CALLBACKS DE INPUT =====
     void OnMoveUp();

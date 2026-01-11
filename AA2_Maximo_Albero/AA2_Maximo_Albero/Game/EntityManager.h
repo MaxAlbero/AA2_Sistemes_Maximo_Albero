@@ -1,9 +1,6 @@
 #pragma once
 #include <vector>
 #include <mutex>
-#include <thread>
-#include <atomic>
-#include <chrono>
 #include <functional>
 #include <algorithm>
 #include "../NodeMap/Vector2.h"
@@ -24,21 +21,16 @@ private:
 
     std::mutex _managerMutex;
 
-    // Thread para gestionar movimiento de enemigos
-    std::thread* _enemyMovementThread;
-    std::atomic<bool> _movementActive;
-    std::atomic<bool> _isStopping;
-
+    // Ya NO tenemos thread central - cada enemigo tiene el suyo
     Room* _currentRoom;
     std::function<Vector2()> _getPlayerPositionCallback;
     std::function<void(Enemy*)> _onEnemyAttackPlayer;
 
 public:
-    EntityManager() : _enemyMovementThread(nullptr), _movementActive(false), _isStopping(false), _currentRoom(nullptr) {}
+    EntityManager() : _currentRoom(nullptr) {}
 
     ~EntityManager()
     {
-        StopEnemyMovement();
         ClearAllEntities();
     }
 
@@ -52,7 +44,7 @@ public:
     void CleanupDeadEnemies(Room* room);
     void CleanupBrokenChests(Room* room);
 
-    // Getters específicos (mantienen compatibilidad con código existente)
+    // Getters específicos
     Enemy* GetEnemyAtPosition(Vector2 position, Room* room);
     Chest* GetChestAtPosition(Vector2 position, Room* room);
     Item* GetItemAtPosition(Vector2 position, Room* room);
@@ -84,10 +76,14 @@ public:
     void InitializeRoomEntities(Room* room, int roomX, int roomY);
     void RegisterLoadedEntities(Room* room);
 
-    // Sistema de movimiento de enemigos
-    void StartEnemyMovement(Room* room, std::function<Vector2()> getPlayerPositionCallback,
+    // Configuración de callbacks para enemigos
+    void SetupEnemyCallbacks(std::function<Vector2()> getPlayerPositionCallback,
         std::function<void(Enemy*)> onEnemyAttackPlayer);
-    void StopEnemyMovement();
+
+    void ConfigureRoomEnemies(Room* room);
+
+    // Validación de movimiento (llamado desde threads de enemigos)
+    bool CanEnemyMoveTo(Enemy* movingEnemy, Vector2 newPosition);
 
     void Lock() { _managerMutex.lock(); }
     void Unlock() { _managerMutex.unlock(); }
@@ -112,13 +108,8 @@ private:
     template<typename T>
     bool IsPositionOccupiedBy(Vector2 position);
 
-    // Validación de movimiento
-    bool IsAdjacent(Vector2 pos1, Vector2 pos2);
-    bool CanEnemyMoveTo(Vector2 newPosition, Vector2 currentPosition, Room* room, Vector2 playerPosition);
+    // Validación
     Vector2 FindValidSpawnPosition(Room* room);
-
-    // Loop de movimiento
-    void EnemyMovementLoop();
 };
 
 // ===== IMPLEMENTACIÓN DE TEMPLATES =====
@@ -129,7 +120,6 @@ inline T* EntityManager::GetEntityAtPosition(Vector2 position, Room* room)
     if (room == nullptr)
         return nullptr;
 
-    // Especialización por tipo usando if constexpr (C++17)
     if constexpr (std::is_same<T, Enemy>::value)
     {
         for (Enemy* entity : room->GetEnemies())
@@ -214,7 +204,6 @@ inline void EntityManager::PlaceEntityOnMap(T* entity, Vector2 position, Room* r
     if (room == nullptr || entity == nullptr)
         return;
 
-    // Colocar en el mapa
     room->GetMap()->SafePickNode(position, [entity](Node* node) {
         if (node != nullptr)
         {
@@ -222,6 +211,5 @@ inline void EntityManager::PlaceEntityOnMap(T* entity, Vector2 position, Room* r
         }
         });
 
-    // Redibujar
     RedrawPosition(position, room);
 }

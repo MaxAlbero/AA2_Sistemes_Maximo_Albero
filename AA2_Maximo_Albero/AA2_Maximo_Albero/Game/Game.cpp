@@ -66,8 +66,19 @@ void Game::ActivateRoomEntities(Room* room)
     if (room == nullptr)
         return;
 
+    // Solo colocar en el mapa, NO iniciar threads
     room->ActivateEntities();
+}
 
+void Game::StartRoomEnemyThreads(Room* room)
+{
+    if (room == nullptr)
+        return;
+
+    // Configurar callbacks de todos los enemigos en la sala
+    _entityManager->ConfigureRoomEnemies(room);
+
+    // Iniciar threads individuales de cada enemigo
     for (Enemy* enemy : room->GetEnemies())
     {
         if (enemy != nullptr)
@@ -80,13 +91,19 @@ void Game::DeactivateRoomEntities(Room* room)
     if (room == nullptr)
         return;
 
-    room->DeactivateEntities();
-
+    // PASO 1: Detener todos los threads de enemigos
     for (Enemy* enemy : room->GetEnemies())
     {
         if (enemy != nullptr)
             enemy->StopMovement();
     }
+
+    // PASO 2: Esperar un momento para asegurar que todos terminaron
+    // Esto previene race conditions donde un thread todavía está dibujando
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    // PASO 3: Quitar todas las entidades del mapa
+    room->DeactivateEntities();
 }
 
 void Game::PlacePlayerOnMap(Vector2 position)
@@ -227,16 +244,23 @@ void Game::Start()
     _ui->Start(_player);
     _inputSystem->StartListen();
 
-    // Iniciar sistemas de entidades
+    // Configurar callbacks globales del EntityManager
     Room* currentRoom = _dungeonMap->GetActiveRoom();
-    _entityManager->StartEnemyMovement(
-        currentRoom,
+    _entityManager->SetCurrentRoom(currentRoom);
+    _entityManager->SetupEnemyCallbacks(
         GetPlayerPositionCallback(),
         GetEnemyAttackCallback()
     );
 
     if (!loadedGame)
+    {
         InitializeCurrentRoom();
+    }
+    else
+    {
+        ActivateRoomEntities(currentRoom);
+        StartRoomEnemyThreads(currentRoom); // Iniciar threads DESPUÉS de dibujar
+    }
 
     _spawner->Start(currentRoom);
     _saveManager->StartAutoSave(_dungeonMap, _player, _entityManager);
@@ -258,7 +282,10 @@ void Game::Stop()
     // Detener todos los sistemas
     _saveManager->StopAutoSave();
     _inputSystem->StopListen();
-    _entityManager->StopEnemyMovement();
+
+    // Ya NO hay thread central de EntityManager que detener
+    // Los threads de enemigos se detienen al destruir EntityManager
+
     _spawner->Stop();
 
     if (_messages != nullptr)
@@ -537,60 +564,67 @@ void Game::ChangeRoom(PortalDir direction)
 
     _gameMutex.unlock();
 
-    // Detener threads
+    // ===== PASO 1: DETENER SPAWNER =====
     _spawner->Stop();
-    _entityManager->StopEnemyMovement();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
     _gameMutex.lock();
 
-    // Desactivar sala anterior
+    // ===== PASO 2: DESACTIVAR SALA ANTERIOR =====
     if (oldRoom != nullptr)
     {
+        // Quitar jugador del mapa
         oldRoom->GetMap()->SafePickNode(_playerPosition, [](Node* node) {
             if (node != nullptr)
                 node->SetContent(nullptr);
             });
 
+        // Detener threads de enemigos y quitar del mapa
         DeactivateRoomEntities(oldRoom);
     }
 
-    // Activar nueva sala
+    // Esperar a que todos los threads de enemigos terminen completamente
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // ===== PASO 3: CAMBIAR A NUEVA SALA =====
     _dungeonMap->SetActiveRoom(newX, newY);
     Room* newRoom = _dungeonMap->GetActiveRoom();
 
-    if (newRoom != nullptr)
-    {
-        PortalDir oppositeDir = GetOppositeDirection(direction);
-        _playerPosition = newRoom->GetSpawnPositionFromPortal(oppositeDir);
-
-        if (_player != nullptr)
-        {
-            _player->SetPosition(_playerPosition);
-        }
-
-        ActivateRoomEntities(newRoom);
-        UpdatePlayerOnMap();
-
-        _gameMutex.unlock();
-
-        CC::Clear();
-        DrawCurrentRoom();
-        InitializeCurrentRoom();
-
-        _entityManager->SetCurrentRoom(newRoom);
-        _entityManager->StartEnemyMovement(
-            newRoom,
-            GetPlayerPositionCallback(),
-            GetEnemyAttackCallback()
-        );
-
-        _spawner->Start(newRoom);
-    }
-    else
+    if (newRoom == nullptr)
     {
         _gameMutex.unlock();
+        return;
     }
+
+    // Calcular nueva posición del jugador
+    PortalDir oppositeDir = GetOppositeDirection(direction);
+    _playerPosition = newRoom->GetSpawnPositionFromPortal(oppositeDir);
+
+    if (_player != nullptr)
+    {
+        _player->SetPosition(_playerPosition);
+    }
+
+    // ===== PASO 4: COLOCAR ENTIDADES EN MAPA (sin threads) =====
+    ActivateRoomEntities(newRoom);
+    UpdatePlayerOnMap();
+
+    _gameMutex.unlock();
+
+    // ===== PASO 5: LIMPIAR Y DIBUJAR =====
+    // CRÍTICO: Limpiar DESPUÉS de desactivar todo pero ANTES de iniciar threads
+    CC::Clear();
+    DrawCurrentRoom();
+    InitializeCurrentRoom();
+
+    // ===== PASO 6: ACTUALIZAR ENTITYMANAGER =====
+    _entityManager->SetCurrentRoom(newRoom);
+
+    // ===== PASO 7: AHORA SÍ, INICIAR THREADS DE ENEMIGOS =====
+    StartRoomEnemyThreads(newRoom);
+
+    // ===== PASO 8: REINICIAR SPAWNER =====
+    _spawner->Start(newRoom);
 }
 
 void Game::OnMoveUp() { MovePlayer(Vector2(0, -1)); }
@@ -622,7 +656,6 @@ void Game::CheckPlayerDeath()
 {
     _gameMutex.lock();
 
-    // Verificar dentro del mutex
     if (_player == nullptr || _player->IsAlive() || _gameOver)
     {
         _gameMutex.unlock();
@@ -632,7 +665,6 @@ void Game::CheckPlayerDeath()
     _gameOver = true;
     _gameMutex.unlock();
 
-    // Mensaje fuera del mutex (no afecta estado compartido)
     if (_messages != nullptr)
         _messages->PushMessage("GAME OVER - El jugador ha muerto", 5);
 }

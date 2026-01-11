@@ -50,6 +50,14 @@ void EntityManager::SpawnEnemy(Vector2 position, Room* room)
 
     room->AddEnemy(enemy);
     PlaceEntityOnMap(enemy, position, room);
+
+    // Configurar callbacks antes de iniciar el thread
+    enemy->SetMovementCallbacks(
+        [this](Enemy* e, Vector2 newPos) { return this->CanEnemyMoveTo(e, newPos); },
+        _getPlayerPositionCallback,
+        _onEnemyAttackPlayer
+    );
+
     enemy->StartMovement();
 }
 
@@ -324,7 +332,6 @@ bool EntityManager::TryAttackChestAt(Vector2 position, Player* attacker, Room* r
 
 ItemType EntityManager::SelectLoot()
 {
-    srand((unsigned int)time(NULL));
     int lootNum = rand() % 3;
 
     switch (lootNum)
@@ -385,7 +392,7 @@ void EntityManager::InitializeRoomEntities(Room* room, int roomX, int roomY)
     if (room == nullptr || room->IsInitialized())
         return;
 
-    int entityCount = 3;
+    int entityCount = 5;
 
     for (int i = 0; i < entityCount; i++)
     {
@@ -459,145 +466,58 @@ void EntityManager::RegisterLoadedEntities(Room* room)
     Unlock();
 }
 
-// ===== SISTEMA DE MOVIMIENTO DE ENEMIGOS =====
+// ===== CONFIGURACIÓN DE CALLBACKS =====
 
-void EntityManager::StartEnemyMovement(Room* room, std::function<Vector2()> getPlayerPositionCallback,
+void EntityManager::SetupEnemyCallbacks(std::function<Vector2()> getPlayerPositionCallback,
     std::function<void(Enemy*)> onEnemyAttackPlayer)
 {
-    if (_movementActive || _isStopping)
-        return;
-
     Lock();
-    _currentRoom = room;
     _getPlayerPositionCallback = getPlayerPositionCallback;
     _onEnemyAttackPlayer = onEnemyAttackPlayer;
     Unlock();
-
-    _movementActive = true;
-    _enemyMovementThread = new std::thread(&EntityManager::EnemyMovementLoop, this);
 }
 
-void EntityManager::StopEnemyMovement()
-{
-    bool expected = false;
-    if (!_isStopping.compare_exchange_strong(expected, true))
-    {
-        return;
-    }
-
-    if (!_movementActive)
-    {
-        _isStopping = false;
-        return;
-    }
-
-    _movementActive = false;
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
-
-    if (_enemyMovementThread != nullptr)
-    {
-        if (_enemyMovementThread->joinable())
-        {
-            _enemyMovementThread->join();
-        }
-
-        delete _enemyMovementThread;
-        _enemyMovementThread = nullptr;
-    }
-
-    _isStopping = false;
-}
-
-// ===== MÉTODOS PRIVADOS =====
-
-bool EntityManager::IsAdjacent(Vector2 pos1, Vector2 pos2)
-{
-    int distX = abs(pos1.X - pos2.X);
-    int distY = abs(pos1.Y - pos2.Y);
-    return (distX + distY) == 1;
-}
-
-void EntityManager::EnemyMovementLoop()
-{
-    while (_movementActive)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-        if (!_movementActive)
-            break;
-
-        Lock();
-        Room* room = _currentRoom;
-        auto getPlayerPos = _getPlayerPositionCallback;
-        auto onAttack = _onEnemyAttackPlayer;
-        Unlock();
-
-        if (room == nullptr)
-            continue;
-
-        Vector2 currentPlayerPosition = getPlayerPos();
-
-        if (currentPlayerPosition.X == -1000 && currentPlayerPosition.Y == -1000)
-        {
-            break;
-        }
-
-        std::vector<Enemy*> enemiesInRoom = room->GetEnemies();
-
-        for (Enemy* enemy : enemiesInRoom)
-        {
-            if (!_movementActive || enemy == nullptr)
-                break;
-
-            bool isValid = false;
-            Lock();
-            auto it = std::find(_enemies.begin(), _enemies.end(), enemy);
-            isValid = (it != _enemies.end());
-            Unlock();
-
-            if (!isValid || !enemy->IsAlive() || !enemy->CanPerformAction())
-                continue;
-
-            Vector2 currentPos = enemy->GetPosition();
-
-            if (IsAdjacent(currentPos, currentPlayerPosition))
-            {
-                onAttack(enemy);
-                enemy->UpdateActionTime();
-                continue;
-            }
-
-            Vector2 direction = enemy->GetRandomDirection();
-            Vector2 newPos = currentPos + direction;
-
-            if (CanEnemyMoveTo(newPos, currentPos, room, currentPlayerPosition))
-            {
-                Lock();
-                auto it = std::find(_enemies.begin(), _enemies.end(), enemy);
-                if (it == _enemies.end())
-                {
-                    Unlock();
-                    continue;
-                }
-                Unlock();
-
-                ClearPositionOnMap(currentPos, room);
-                enemy->SetPosition(newPos);
-                PlaceEntityOnMap(enemy, newPos, room);
-                RedrawPosition(currentPos, room);
-                enemy->UpdateActionTime();
-            }
-        }
-    }
-}
-
-bool EntityManager::CanEnemyMoveTo(Vector2 newPosition, Vector2 currentPosition, Room* room, Vector2 playerPosition)
+// Configura los callbacks de todos los enemigos activos en una sala
+void EntityManager::ConfigureRoomEnemies(Room* room)
 {
     if (room == nullptr)
+        return;
+
+    for (Enemy* enemy : room->GetEnemies())
+    {
+        if (enemy != nullptr)
+        {
+            enemy->SetMovementCallbacks(
+                [this](Enemy* e, Vector2 newPos) { return this->CanEnemyMoveTo(e, newPos); },
+                _getPlayerPositionCallback,
+                _onEnemyAttackPlayer
+            );
+        }
+    }
+}
+
+// ===== VALIDACIÓN DE MOVIMIENTO =====
+
+// Valida si un enemigo puede moverse a una posición
+// Es llamado desde el thread del enemigo individual
+bool EntityManager::CanEnemyMoveTo(Enemy* movingEnemy, Vector2 newPosition)
+{
+    if (movingEnemy == nullptr)
         return false;
 
-    bool canMove = true;
+    Lock();
+    Room* room = _currentRoom;
+    auto getPlayerPos = _getPlayerPositionCallback;
+    Unlock();
 
+    if (room == nullptr || !getPlayerPos)
+        return false;
+
+    Vector2 currentPosition = movingEnemy->GetPosition();
+    Vector2 playerPosition = getPlayerPos();
+
+    // Verificar paredes y portales
+    bool canMove = true;
     room->GetMap()->SafePickNode(newPosition, [&](Node* node) {
         if (node != nullptr)
         {
@@ -618,6 +538,7 @@ bool EntityManager::CanEnemyMoveTo(Vector2 newPosition, Vector2 currentPosition,
     if (!canMove)
         return false;
 
+    // No moverse a la posición del jugador
     if (newPosition.X == playerPosition.X && newPosition.Y == playerPosition.Y)
     {
         return false;
@@ -625,19 +546,21 @@ bool EntityManager::CanEnemyMoveTo(Vector2 newPosition, Vector2 currentPosition,
 
     Lock();
 
+    // Verificar colisión con otros enemigos
     for (Enemy* enemy : _enemies)
     {
+        if (enemy == movingEnemy)
+            continue;
+
         Vector2 enemyPos = enemy->GetPosition();
         if (enemyPos.X == newPosition.X && enemyPos.Y == newPosition.Y)
         {
-            if (!(enemyPos.X == currentPosition.X && enemyPos.Y == currentPosition.Y))
-            {
-                canMove = false;
-                break;
-            }
+            canMove = false;
+            break;
         }
     }
 
+    // Verificar colisión con cofres
     if (canMove)
     {
         for (Chest* chest : _chests)
@@ -651,6 +574,7 @@ bool EntityManager::CanEnemyMoveTo(Vector2 newPosition, Vector2 currentPosition,
         }
     }
 
+    // Verificar colisión con items
     if (canMove)
     {
         for (Item* item : _items)
@@ -665,6 +589,14 @@ bool EntityManager::CanEnemyMoveTo(Vector2 newPosition, Vector2 currentPosition,
     }
 
     Unlock();
+
+    // Si puede moverse, actualizar en el mapa
+    if (canMove)
+    {
+        ClearPositionOnMap(currentPosition, room);
+        PlaceEntityOnMap(movingEnemy, newPosition, room);
+        RedrawPosition(currentPosition, room);
+    }
 
     return canMove;
 }
