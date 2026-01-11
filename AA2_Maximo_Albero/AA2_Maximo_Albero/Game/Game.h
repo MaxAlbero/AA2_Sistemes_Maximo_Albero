@@ -39,22 +39,14 @@ private:
 
     bool _gameOver;
 
-    void InitializeDungeon();
     void DrawCurrentRoom();
 
-    bool LoadSavedGame();  // Nuevo método
-
     bool CanMoveTo(Vector2 position);
-    bool IsPositionOccupied(Vector2 position);
     void MovePlayer(Vector2 direction);
     void UpdatePlayerOnMap();
 
-    void UpdateEnemyMovement();
-
     void ChangeRoom(PortalDir direction);
     PortalDir GetOppositeDirection(PortalDir dir);
-
-    void InitializeCurrentRoom();
 
     // Callbacks para input
     void OnMoveUp();

@@ -191,6 +191,9 @@
     <ClInclude Include="dist\json\json-forwards.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="Game\Entity.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="include\CMakeLists.txt" />

@@ -12,6 +12,7 @@
 #include <random>
 
 #include "../Json/ICodable.h"
+#include "Entity.h"
 
 
 class Enemy : public INodeContent, public IAttacker, public IDamageable, public ICodable

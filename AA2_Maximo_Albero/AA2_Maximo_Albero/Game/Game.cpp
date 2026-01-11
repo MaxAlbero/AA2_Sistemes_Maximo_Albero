@@ -37,19 +37,6 @@ Game::~Game()
     delete _dungeonMap;
 }
 
-void Game::InitializeCurrentRoom()
-{
-    Room* currentRoom = _dungeonMap->GetActiveRoom();
-    if (currentRoom == nullptr)
-        return;
-
-    int currentX = _dungeonMap->GetCurrentX();
-    int currentY = _dungeonMap->GetCurrentY();
-
-    // Solo inicializar si no se ha inicializado antes
-    _entityManager->InitializeRoomEntities(currentRoom, currentX, currentY);
-}
-
 void Game::Start()
 {
     srand((unsigned int)time(NULL));
@@ -221,12 +208,6 @@ void Game::Start()
         }
     );
 
-    // Solo inicializar la sala actual si NO se cargó una partida
-    if (!loadedGame)
-    {
-        InitializeCurrentRoom();
-    }
-
     _spawner->Start(currentRoom);
 
     // INICIAR AUTOGUARDADO
@@ -284,22 +265,11 @@ void Game::DrawCurrentRoom()
 bool Game::CanMoveTo(Vector2 position)
 {
     Room* currentRoom = _dungeonMap->GetActiveRoom();
-    if (currentRoom == nullptr)
+    if (!currentRoom)
         return false;
 
-    bool canMove = false;
-
-    // Esto sirve para verificar que no sea una pared
-    currentRoom->GetMap()->SafePickNode(position, [&](Node* node) {
-        if (node != nullptr)
-        {
-
-            Wall* wall = node->GetContent<Wall>();
-            canMove = (wall == nullptr);
-        }
-        });
-
-    return canMove;
+    // Usamos el sistema unificado de colisiones
+    return !_entityManager->IsPositionBlocked(position, currentRoom);
 }
 
 void Game::UpdatePlayerOnMap()
@@ -379,26 +349,22 @@ void Game::MovePlayer(Vector2 direction)
         return;
     }
 
-    // ===== SISTEMA DE ATAQUE CON RANGO =====
-    // Permite atacar a distancia según el arma equipada
-    // Espada = rango 1, Lanza = rango 2
+    // ===== SISTEMA DE ATAQUE CON RANGO (UNIFICADO) =====
     int attackRange = _player->GetAttackRange();
     bool attacked = false;
 
-    // Iterar desde rango 1 hasta el máximo del arma
     for (int range = 1; range <= attackRange && !attacked; range++)
     {
-        Vector2 targetPosition = Vector2(
+        Vector2 targetPosition(
             _playerPosition.X + (direction.X * range),
             _playerPosition.Y + (direction.Y * range)
         );
 
-        // VERIFICACIÓN DE OBSTÁCULOS: La lanza NO atraviesa paredes
-        // Comprobar cada casilla intermedia hasta el objetivo
+        // Verificar obstáculos intermedios (la lanza NO atraviesa paredes)
         bool pathBlocked = false;
         for (int checkRange = 1; checkRange <= range; checkRange++)
         {
-            Vector2 checkPos = Vector2(
+            Vector2 checkPos(
                 _playerPosition.X + (direction.X * checkRange),
                 _playerPosition.Y + (direction.Y * checkRange)
             );
@@ -413,16 +379,8 @@ void Game::MovePlayer(Vector2 direction)
         if (pathBlocked)
             break;
 
-        // Intentar atacar enemigo en esta posición
-        if (_entityManager->TryAttackEnemyAt(targetPosition, _player, currentRoom))
-        {
-            _player->UpdateActionTime();
-            attacked = true;
-            break;
-        }
-
-        // Intentar atacar cofre en esta posición
-        if (_entityManager->TryAttackChestAt(targetPosition, _player, currentRoom))
+        // Ataque unificado (enemigos y cofres)
+        if (_entityManager->TryAttackAt(targetPosition, _player, currentRoom))
         {
             _player->UpdateActionTime();
             attacked = true;
@@ -437,47 +395,37 @@ void Game::MovePlayer(Vector2 direction)
         return;
     }
 
-    // ===== ATAQUE CUERPO A CUERPO (Rango 1) =====
-    // Verificar si hay enemigo/cofre en la casilla a la que intentamos movernos
-    Enemy* enemyAtPosition = _entityManager->GetEnemyAtPosition(newPosition, currentRoom);
-    if (enemyAtPosition != nullptr)
-    {
-        _player->Attack(enemyAtPosition);
-        _player->UpdateActionTime();
-        _entityManager->CleanupDeadEnemies(currentRoom);
-        _gameMutex.unlock();
-        return;
-    }
-
-    Chest* chestAtPosition = _entityManager->GetChestAtPosition(newPosition, currentRoom);
-    if (chestAtPosition != nullptr)
-    {
-        _player->Attack(chestAtPosition);
-        _player->UpdateActionTime();
-        _entityManager->CleanupBrokenChests(currentRoom);
-        _gameMutex.unlock();
-        return;
-    }
-
     // ===== RECOLECCIÓN DE ITEMS =====
     // Si hay un item en la nueva posición, recogerlo automáticamente
-    Item* itemAtPosition = _entityManager->GetItemAtPosition(newPosition, currentRoom);
+    Item* itemAtPosition = currentRoom->GetItemAt(newPosition);
+
     if (itemAtPosition != nullptr)
     {
         ItemType type = itemAtPosition->GetType();
+
         switch (type)
         {
         case ItemType::COIN:
             _player->AddCoin();
             break;
+
         case ItemType::POTION:
             _player->AddPotion();
             break;
+
         case ItemType::WEAPON:
             _player->ChangeWeapon();
             break;
         }
-        _entityManager->RemoveItem(itemAtPosition, currentRoom);
+
+        // Limpiar visualmente el mapa
+        _entityManager->ClearMapPosition(currentRoom, newPosition);
+
+        // Quitar de la sala
+        currentRoom->RemoveItem(itemAtPosition);
+
+        // Liberar memoria
+        delete itemAtPosition;
     }
 
     // ===== MOVIMIENTO REAL DEL JUGADOR =====
@@ -627,9 +575,6 @@ void Game::ChangeRoom(PortalDir direction)
         CC::Clear();
         DrawCurrentRoom();
 
-        // Inicializar sala si es primera vez (spawn inicial de enemigos/cofres)
-        InitializeCurrentRoom();
-
         // ===== FASE 5: REINICIAR THREADS CON NUEVA SALA =====
         // Actualizar referencia de sala en EntityManager
         _entityManager->SetCurrentRoom(newRoom);
@@ -680,16 +625,6 @@ void Game::OnMoveRight()
     MovePlayer(Vector2(1, 0));
 }
 
-bool Game::IsPositionOccupied(Vector2 position) //NOTE: THIS WILL BE USED LATER WHEN SPAWNING ENTITIES PERIODICALLY IN THE MIDDLE OF THE RUN
-{
-    // Verificar si el jugador está en esa posición
-    if (_playerPosition.X == position.X && _playerPosition.Y == position.Y)
-        return true;
-
-    // Verificar si hay un enemigo en esa posición (delegado al EntityManager)
-    return _entityManager->IsPositionOccupiedByEnemy(position);
-}
-
 PortalDir Game::GetOppositeDirection(PortalDir dir)
 {
     switch (dir)
@@ -733,4 +668,31 @@ void Game::CheckPlayerDeath()
             _gameMutex.unlock();
         }
     }
+}
+
+Vector2 Room::GetSpawnPositionFromPortal(PortalDir fromDirection)
+{
+    int centerX = _size.X / 2;
+    int centerY = _size.Y / 2;
+
+    switch (fromDirection)
+    {
+    case PortalDir::Left:
+        // Viene desde la izquierda aparece a la derecha
+        return Vector2(1, centerY);
+
+    case PortalDir::Right:
+        // Viene desde la derecha aparece a la izquierda
+        return Vector2(_size.X - 2, centerY);
+
+    case PortalDir::Up:
+        // Viene desde arriba aparece abajo
+        return Vector2(centerX, 1);
+
+    case PortalDir::Down:
+        // Viene desde abajo aparece arriba
+        return Vector2(centerX, _size.Y - 2);
+    }
+
+    return Vector2(1, 1); // Fallback de seguridad
 }

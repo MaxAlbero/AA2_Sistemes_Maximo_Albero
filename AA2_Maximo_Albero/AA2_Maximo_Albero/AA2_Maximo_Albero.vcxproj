@@ -42,7 +42,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -150,6 +150,7 @@
     <ClInclude Include="Game\Chest.h" />
     <ClInclude Include="Game\DungeonMap.h" />
     <ClInclude Include="Game\Enemy.h" />
+    <ClInclude Include="Game\Entity.h" />
     <ClInclude Include="Game\EntityManager.h" />
     <ClInclude Include="Game\Item.h" />
     <ClInclude Include="Game\Portal.h" />

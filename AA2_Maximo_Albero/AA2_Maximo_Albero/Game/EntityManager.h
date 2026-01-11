@@ -5,16 +5,15 @@
 #include <atomic>
 #include <chrono>
 #include <functional>
+
 #include "../NodeMap/Vector2.h"
 #include "Enemy.h"
 #include "Chest.h"
 #include "Item.h"
 #include "Player.h"
 #include "Portal.h"
-
 #include "Room.h"
 #include "Wall.h"
-
 
 class EntityManager
 {
@@ -35,82 +34,47 @@ private:
     std::function<void(Enemy*)> _onEnemyAttackPlayer;
 
 public:
-    EntityManager() : _enemyMovementThread(nullptr), _movementActive(false) {}
-
-    ~EntityManager()
-    {
-        StopEnemyMovement();
-        ClearAllEntities();
-    }
+    EntityManager();
+    ~EntityManager();
 
     void SetCurrentRoom(Room* room);
 
-    // Gestión de enemigos
+    // Spawns
     void SpawnEnemy(Vector2 position, Room* room);
-
     void SpawnChest(Vector2 position, Room* room);
-
-    void CleanupDeadEnemies(Room* room);
-
-    bool IsPositionOccupiedByEnemy(Vector2 position);
-
-    Enemy* GetEnemyAtPosition(Vector2 position, Room* room);
-
-    //Methods to get entities
-    std::vector<Enemy*> GetEnemies();
-
-    std::vector<Chest*> GetChests();
-
-    std::vector<Item*> GetItems();
-
-    void ClearAllEntities();
-
-    int GetEnemyCount();
-
-    // Sistema de movimiento de enemigos
-    void StartEnemyMovement(Room* room, std::function<Vector2()> getPlayerPositionCallback, std::function<void(Enemy*)> onEnemyAttackPlayer);
-
-    void StopEnemyMovement();
-    bool IsPositionOccupiedByChest(Vector2 position);
-    Chest* GetChestAtPosition(Vector2 position, Room* room);
-
-    void CleanupBrokenChests(Room* room);
-
-    int GetChestCount();
-
     void SpawnItem(Vector2 position, ItemType type, Room* room);
 
-    Item* GetItemAtPosition(Vector2 position, Room* room);
-    
-    //if something is going to give problems, probably it's going to be this
-    void RemoveItem(Item* itemToRemove, Room* room);
+    // Ataques unificados
+    bool TryAttackAt(Vector2 position, Player* attacker, Room* room);
 
-    bool IsPositionOccupiedByItem(Vector2 position);
+    // Movimiento enemigos
+    void StartEnemyMovement(Room* room,
+        std::function<Vector2()> getPlayerPositionCallback,
+        std::function<void(Enemy*)> onEnemyAttackPlayer);
 
+    void StopEnemyMovement();
+
+    // Utilidades
+    bool IsPositionBlocked(Vector2 position, Room* room);
     ItemType SelectLoot();
-
     void DropLoot(Vector2 position, ItemType lootItem, Room* room);
 
-    void InitializeRoomEntities(Room* room, int roomX, int roomY);
-
-    bool TryAttackEnemyAt(Vector2 position, Player* attacker, Room* room);
-
-    bool TryAttackChestAt(Vector2 position, Player* attacker, Room* room);
-
     void RegisterLoadedEntities(Room* room);
+    void ClearAllEntities();
 
-    void Lock() { _managerMutex.lock(); }
-    void Unlock() { _managerMutex.unlock(); }
+    // Funciones centralizadas de mapa
+    void ClearMapPosition(Room* room, Vector2 pos);
 
 private:
+    void EnemyMovementLoop();
+    void MoveEnemy(Enemy* enemy, Room* room, Vector2 playerPos);
+
     bool IsAdjacent(Vector2 pos1, Vector2 pos2);
 
-    void EnemyMovementLoop();
+    // Funciones centralizadas de mapa
+    void PlaceContent(Room* room, INodeContent* content, Vector2 pos);
 
-    bool CanEnemyMoveTo(Vector2 newPosition, Vector2 currentPosition, Room* room, Vector2 playerPosition);
-
-    Vector2 FindValidSpawnPosition(Room* room);
-    
-
-
+    // Eliminaciones específicas
+    void HandleEnemyDeath(Enemy* enemy, Room* room);
+    void HandleChestDeath(Chest* chest, Room* room);
 };

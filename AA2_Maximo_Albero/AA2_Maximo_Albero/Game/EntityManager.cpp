@@ -1,234 +1,140 @@
 #include "EntityManager.h"
 
-void EntityManager::SetCurrentRoom(Room* room)
+EntityManager::EntityManager()
+    : _enemyMovementThread(nullptr), _movementActive(false),
+    _isStopping(false), _currentRoom(nullptr)
 {
-    Lock();
-    _currentRoom = room;
-    Unlock();
 }
 
+EntityManager::~EntityManager()
+{
+    StopEnemyMovement();
+    ClearAllEntities();
+}
 
-// Gestión de enemigos
+void EntityManager::SetCurrentRoom(Room* room)
+{
+    std::lock_guard<std::mutex> lock(_managerMutex);
+    _currentRoom = room;
+}
+
+// ======================
+// SPAWNS
+// ======================
+
 void EntityManager::SpawnEnemy(Vector2 position, Room* room)
 {
-    if (room == nullptr)
-        return;
+    if (!room) return;
 
     Enemy* enemy = new Enemy(position);
 
-    Lock();
     _enemies.push_back(enemy);
-    Unlock();
-
-
-
-    //Añadir a la sala
     room->AddEnemy(enemy);
 
-    // Colocar en el mapa
-    room->GetMap()->SafePickNode(position, [enemy](Node* node) {
-        if (node != nullptr)
-        {
-            node->SetContent(enemy);
-        }
-        });
-
-    room->GetMap()->SafePickNode(position, [](Node* node) {
-        if (node != nullptr)
-        {
-            node->DrawContent(Vector2(0, 0));
-        }
-        });
-
+    PlaceContent(room, enemy, position);
     enemy->StartMovement();
 }
 
 void EntityManager::SpawnChest(Vector2 position, Room* room)
 {
-    if (room == nullptr)
-        return;
+    if (!room) return;
 
     Chest* chest = new Chest(position);
 
-
-    Lock();
     _chests.push_back(chest);
-    Unlock();
-
-    // Añadir a la sala
     room->AddChest(chest);
 
-    room->GetMap()->SafePickNode(position, [chest](Node* node) {
-        if (node != nullptr)
-        {
-            node->SetContent(chest);
-        }
-        });
-
-    room->GetMap()->SafePickNode(position, [](Node* node) {
-        if (node != nullptr)
-        {
-            node->DrawContent(Vector2(0, 0));
-        }
-        });
+    PlaceContent(room, chest, position);
 }
 
-void EntityManager::CleanupDeadEnemies(Room* room)
+void EntityManager::SpawnItem(Vector2 position, ItemType type, Room* room)
 {
-    if (room == nullptr)
-        return;
+    if (!room) return;
 
-    std::vector<Enemy*>& enemies = room->GetEnemies();
+    Item* item = new Item(position, type);
 
-    for (auto it = enemies.begin(); it != enemies.end();)
+    _items.push_back(item);
+    room->AddItem(item);
+
+    PlaceContent(room, item, position);
+}
+
+// ======================
+// ATAQUE UNIFICADO
+// ======================
+
+bool EntityManager::TryAttackAt(Vector2 position, Player* attacker, Room* room)
+{
+    if (!room || !attacker) return false;
+
+    // Intentar atacar enemigo
+    if (Enemy* enemy = room->GetEnemyAt(position))
     {
-        Enemy* enemy = *it;
+        attacker->Attack(enemy);
+
         if (!enemy->IsAlive())
-        {
-            enemy->StopMovement();
-            Vector2 enemyPos = enemy->GetPosition();
+            HandleEnemyDeath(enemy, room);
 
-            ItemType loot = SelectLoot();
-
-            room->GetMap()->SafePickNode(enemyPos, [](Node* node) {
-                if (node != nullptr)
-                {
-                    node->SetContent(nullptr);
-                }
-                });
-
-            room->GetMap()->SafePickNode(enemyPos, [](Node* node) {
-                if (node != nullptr)
-                {
-                    node->DrawContent(Vector2(0, 0));
-                }
-                });
-
-            Lock();
-            auto globalIt = std::find(_enemies.begin(), _enemies.end(), enemy);
-            if (globalIt != _enemies.end())
-            {
-                _enemies.erase(globalIt);
-            }
-            Unlock();
-
-            delete enemy;
-            it = enemies.erase(it);
-
-            DropLoot(enemyPos, loot, room);
-        }
-        else
-        {
-            ++it;
-        }
+        return true;
     }
-}
 
-bool EntityManager::IsPositionOccupiedByEnemy(Vector2 position)
-{
-    Lock();
-
-    bool occupied = false;
-    for (const Enemy* enemy : _enemies)
+    // Intentar atacar cofre
+    if (Chest* chest = room->GetChestAt(position))
     {
-        Vector2 enemyPos = const_cast<Enemy*>(enemy)->GetPosition();
-        if (enemyPos.X == position.X && enemyPos.Y == position.Y)
-        {
-            occupied = true;
-            break;
-        }
+        attacker->Attack(chest);
+
+        if (chest->IsBroken())
+            HandleChestDeath(chest, room);
+
+        return true;
     }
 
-    Unlock();
-    return occupied;
+    return false;
 }
 
-Enemy* EntityManager::GetEnemyAtPosition(Vector2 position, Room* room)
-{
-    if (room == nullptr)
-        return nullptr;
+// ======================
+// ELIMINACIONES
+// ======================
 
-    for (Enemy* enemy : room->GetEnemies())
-    {
-        Vector2 enemyPos = enemy->GetPosition();
-        if (enemyPos.X == position.X && enemyPos.Y == position.Y)
-        {
-            return enemy;
-        }
-    }
-    return nullptr;
+void EntityManager::HandleEnemyDeath(Enemy* enemy, Room* room)
+{
+    Vector2 pos = enemy->GetPosition();
+
+    ClearMapPosition(room, pos);
+    room->RemoveEnemy(enemy);
+
+    _enemies.erase(std::remove(_enemies.begin(), _enemies.end(), enemy), _enemies.end());
+    delete enemy;
+
+    DropLoot(pos, SelectLoot(), room);
 }
 
-//Methods to get entities
-std::vector<Enemy*> EntityManager::GetEnemies()
+void EntityManager::HandleChestDeath(Chest* chest, Room* room)
 {
-    Lock();
-    std::vector<Enemy*> enemiesCopy = _enemies;
-    Unlock();
-    return enemiesCopy;
+    Vector2 pos = chest->GetPosition();
+
+    ClearMapPosition(room, pos);
+    room->RemoveChest(chest);
+
+    _chests.erase(std::remove(_chests.begin(), _chests.end(), chest), _chests.end());
+    delete chest;
+
+    DropLoot(pos, SelectLoot(), room);
 }
 
-std::vector<Chest*> EntityManager::GetChests()
+// ======================
+// MOVIMIENTO ENEMIGOS
+// ======================
+
+void EntityManager::StartEnemyMovement(Room* room,
+    std::function<Vector2()> getPlayerPositionCallback,
+    std::function<void(Enemy*)> onEnemyAttackPlayer)
 {
-    Lock();
-    std::vector<Chest*> chestsCopy = _chests;
-    Unlock();
-    return chestsCopy;
-}
+    if (_movementActive || _isStopping) return;
 
-std::vector<Item*> EntityManager::GetItems()
-{
-    Lock();
-    std::vector<Item*> itemsCopy = _items;
-    Unlock();
-    return itemsCopy;
-}
-
-void EntityManager::ClearAllEntities()
-{
-    Lock();
-
-    for (Enemy* enemy : _enemies)
-    {
-        enemy->StopMovement();
-        delete enemy;
-    }
-    _enemies.clear();
-
-
-    for (Chest* chest : _chests) {
-        delete chest;
-    }
-    _chests.clear();
-
-    for (Item* item : _items) {
-        delete item;
-    }
-    _items.clear();
-
-    Unlock();
-}
-
-int EntityManager::GetEnemyCount()
-{
-    Lock();
-    int count = _enemies.size();
-    Unlock();
-    return count;
-}
-
-// Sistema de movimiento de enemigos
-void EntityManager::StartEnemyMovement(Room* room, std::function<Vector2()> getPlayerPositionCallback, std::function<void(Enemy*)> onEnemyAttackPlayer)
-{
-    // Asegurarse de que no hay otro movimiento activo
-    if (_movementActive || _isStopping)
-        return;
-
-    Lock();
     _currentRoom = room;
     _getPlayerPositionCallback = getPlayerPositionCallback;
     _onEnemyAttackPlayer = onEnemyAttackPlayer;
-    Unlock();
 
     _movementActive = true;
     _enemyMovementThread = new std::thread(&EntityManager::EnemyMovementLoop, this);
@@ -236,665 +142,152 @@ void EntityManager::StartEnemyMovement(Room* room, std::function<Vector2()> getP
 
 void EntityManager::StopEnemyMovement()
 {
-    // Verificar si ya se está deteniendo para evitar múltiples llamadas
-    bool expected = false;
-    if (!_isStopping.compare_exchange_strong(expected, true))
-    {
-        // Otro thread ya está deteniendo el movimiento
-        return;
-    }
+    if (!_movementActive) return;
 
-    if (!_movementActive)
-    {
-        _isStopping = false;
-        return;
-    }
-
-    // Señalar al loop que debe detenerse
     _movementActive = false;
 
-    // Esperar a que el loop detecte el cambio (sin bloquear mutex)
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    if (_enemyMovementThread && _enemyMovementThread->joinable())
+        _enemyMovementThread->join();
 
-    // Ahora sí, hacer join del thread
-    if (_enemyMovementThread != nullptr)
-    {
-        if (_enemyMovementThread->joinable())
-        {
-            _enemyMovementThread->join();
-        }
-
-        delete _enemyMovementThread;
-        _enemyMovementThread = nullptr;
-    }
-
-    // Restablecer flag de stopping
-    _isStopping = false;
+    delete _enemyMovementThread;
+    _enemyMovementThread = nullptr;
 }
 
-bool EntityManager::IsPositionOccupiedByChest(Vector2 position)
-{
-    Lock();
-
-    bool occupied = false;
-    for (const Chest* chest : _chests)
-    {
-        Vector2 chestPos = const_cast<Chest*>(chest)->GetPosition();
-        if (chestPos.X == position.X && chestPos.Y == position.Y)
-        {
-            occupied = true;
-            break;
-        }
-    }
-
-    Unlock();
-    return occupied;
-}
-
-Chest* EntityManager::GetChestAtPosition(Vector2 position, Room* room)
-{
-    if (room == nullptr)
-        return nullptr;
-
-    for (Chest* chest : room->GetChests())
-    {
-        Vector2 chestPos = chest->GetPosition();
-        if (chestPos.X == position.X && chestPos.Y == position.Y)
-        {
-            return chest;
-        }
-    }
-    return nullptr;
-}
-
-void EntityManager::CleanupBrokenChests(Room* room)
-{
-    if (room == nullptr)
-        return;
-
-    std::vector<Chest*>& chests = room->GetChests();
-
-    for (auto it = chests.begin(); it != chests.end();)
-    {
-        Chest* chest = *it;
-        if (chest->IsBroken())
-        {
-
-            Vector2 chestPos = chest->GetPosition();
-
-            ItemType loot = SelectLoot();
-
-            room->GetMap()->SafePickNode(chestPos, [](Node* node) {
-                if (node != nullptr)
-                {
-                    node->SetContent(nullptr);
-                }
-                });
-
-            room->GetMap()->SafePickNode(chestPos, [](Node* node) {
-                if (node != nullptr)
-                {
-                    node->DrawContent(Vector2(0, 0));
-                }
-                });
-
-            Lock();
-            auto globalIt = std::find(_chests.begin(), _chests.end(), chest);
-            if (globalIt != _chests.end())
-            {
-                _chests.erase(globalIt);
-            }
-            Unlock();
-
-            delete chest;
-            it = chests.erase(it);
-
-            DropLoot(chestPos, loot, room);
-        }
-        else
-        {
-            ++it;
-        }
-    }
-}
-
-int EntityManager::GetChestCount()
-{
-    Lock();
-    int count = _chests.size();
-    Unlock();
-    return count;
-}
-
-void EntityManager::SpawnItem(Vector2 position, ItemType type, Room* room)
-{
-    if (room == nullptr)
-        return;
-
-    Item* item = new Item(position, type);
-
-    Lock();
-    _items.push_back(item);
-    Unlock();
-
-    // Añadir a la sala
-    room->AddItem(item);
-
-    room->GetMap()->SafePickNode(position, [item](Node* node) {
-        if (node != nullptr)
-        {
-            node->SetContent(item);
-        }
-        });
-
-    room->GetMap()->SafePickNode(position, [](Node* node) {
-        if (node != nullptr)
-        {
-            node->DrawContent(Vector2(0, 0));
-        }
-        });
-}
-
-Item* EntityManager::GetItemAtPosition(Vector2 position, Room* room)
-{
-    if (room == nullptr)
-        return nullptr;
-
-    for (Item* item : room->GetItems())
-    {
-        Vector2 itemPos = item->GetPosition();
-        if (itemPos.X == position.X && itemPos.Y == position.Y)
-        {
-            return item;
-        }
-    }
-    return nullptr;
-}
-
-//if something is going to give problems, probably it's going to be this
-void EntityManager::RemoveItem(Item* itemToRemove, Room* room)
-{
-    if (room == nullptr || itemToRemove == nullptr)
-        return;
-
-    std::vector<Item*>& items = room->GetItems();
-
-    for (auto it = items.begin(); it != items.end(); ++it)
-    {
-        if (*it == itemToRemove)
-        {
-            Vector2 itemPos = itemToRemove->GetPosition();
-
-            // Limpiar del mapa
-            room->GetMap()->SafePickNode(itemPos, [](Node* node) {
-                if (node != nullptr)
-                {
-                    node->SetContent(nullptr);
-                }
-                });
-
-            room->GetMap()->SafePickNode(itemPos, [](Node* node) {
-                if (node != nullptr)
-                {
-                    node->DrawContent(Vector2(0, 0));
-                }
-                });
-
-            // Eliminar de la lista global del EntityManager
-            Lock();
-            auto globalIt = std::find(_items.begin(), _items.end(), itemToRemove);
-            if (globalIt != _items.end())
-            {
-                _items.erase(globalIt);
-            }
-            Unlock();
-
-            // Eliminar de la lista de la sala
-            delete itemToRemove;
-            items.erase(it);
-
-            break; //Salir del bucle después de encontrar el item
-        }
-    }
-}
-
-bool EntityManager::IsPositionOccupiedByItem(Vector2 position)
-{
-    Lock();
-
-    bool occupied = false;
-    for (const Item* item : _items)
-    {
-        Vector2 itemPos = const_cast<Item*>(item)->GetPosition();
-        if (itemPos.X == position.X && itemPos.Y == position.Y)
-        {
-            occupied = true;
-            break;
-        }
-    }
-
-    Unlock();
-    return occupied;
-}
-
-ItemType EntityManager::SelectLoot() {
-    srand((unsigned int)time(NULL)); //this is a problem TO DO: See if I can fix it without needing to use srand in every place I make a random choice
-    ItemType lootItem;
-    int lootNum = rand() % 3;
-
-    switch (lootNum) {
-    case 0:
-        lootItem = ItemType::COIN;
-        break;
-    case 1:
-        lootItem = ItemType::POTION;
-        break;
-    case 2:
-        lootItem = ItemType::WEAPON;
-        break;
-    default:
-        lootItem = ItemType::COIN;
-    }
-
-    return lootItem;
-}
-
-void EntityManager::DropLoot(Vector2 position, ItemType lootItem, Room* room)
-{
-    if (room == nullptr)
-        return;
-
-    SpawnItem(position, lootItem, room);
-}
-
-void EntityManager::InitializeRoomEntities(Room* room, int roomX, int roomY)
-{
-    if (room == nullptr || room->IsInitialized())
-        return;
-
-    int entityCount = 3; //1 + (rand() % 2);  // Genera 1 o 2
-
-    for (int i = 0; i < entityCount; i++)
-    {
-        Vector2 spawnPos = FindValidSpawnPosition(room);
-
-        if (spawnPos.X == -1)
-            continue;  // No se encontró posición válida
-
-
-        int entityType = rand() % 2;
-
-        switch (entityType) {
-        case 0:
-            SpawnEnemy(spawnPos, room);
-            break;
-        case 1:
-            SpawnChest(spawnPos, room);
-            break;
-        }
-    }
-
-    room->SetInitialized(true);
-}
-
-bool EntityManager::TryAttackEnemyAt(Vector2 position, Player* attacker, Room* room)
-{
-    Lock();
-
-    Enemy* enemy = nullptr;
-    for (Enemy* e : _enemies)
-    {
-        Vector2 enemyPos = e->GetPosition();
-        if (enemyPos.X == position.X && enemyPos.Y == position.Y)
-        {
-            enemy = e;
-            break;
-        }
-    }
-
-    if (enemy != nullptr)
-    {
-        attacker->Attack(enemy);
-        Unlock();
-
-        CleanupDeadEnemies(room);
-        return true;
-    }
-
-    Unlock();
-    return false;
-}
-
-bool EntityManager::TryAttackChestAt(Vector2 position, Player* attacker, Room* room)
-{
-    Lock();
-
-    Chest* chest = nullptr;
-    for (Chest* c : _chests)
-    {
-        Vector2 chestPos = c->GetPosition();
-        if (chestPos.X == position.X && chestPos.Y == position.Y)
-        {
-            chest = c;
-            break;
-        }
-    }
-
-    if (chest != nullptr)
-    {
-        attacker->Attack(chest);
-        Unlock();
-
-        CleanupBrokenChests(room);
-        return true;
-    }
-
-    Unlock();
-    return false;
-}
-
-void EntityManager::RegisterLoadedEntities(Room* room)
-{
-    if (room == nullptr)
-        return;
-
-    Lock();
-
-    // Registrar enemigos
-    for (Enemy* enemy : room->GetEnemies())
-    {
-        if (enemy != nullptr)
-        {
-            // Añadir al vector global si no está ya
-            auto it = std::find(_enemies.begin(), _enemies.end(), enemy);
-            if (it == _enemies.end())
-            {
-                _enemies.push_back(enemy);
-            }
-        }
-    }
-
-    // Registrar cofres
-    for (Chest* chest : room->GetChests())
-    {
-        if (chest != nullptr)
-        {
-            auto it = std::find(_chests.begin(), _chests.end(), chest);
-            if (it == _chests.end())
-            {
-                _chests.push_back(chest);
-            }
-        }
-    }
-
-    // Registrar items
-    for (Item* item : room->GetItems())
-    {
-        if (item != nullptr)
-        {
-            auto it = std::find(_items.begin(), _items.end(), item);
-            if (it == _items.end())
-            {
-                _items.push_back(item);
-            }
-        }
-    }
-
-    Unlock();
-}
-
-bool EntityManager::IsAdjacent(Vector2 pos1, Vector2 pos2)
-{
-    int distX = abs(pos1.X - pos2.X);
-    int distY = abs(pos1.Y - pos2.Y);
-
-    // Adyacente significa que la suma de distancias es exactamente 1
-    // (horizontal o vertical, no diagonal)
-    return (distX + distY) == 1;
-}
-
-//Loop principal que gestiona el movimiento de TODOS los enemigos activos
-// Thread separado que corre continuamente mientras _movementActive == true
-// Se ejecuta cada 100ms para verificar y mover enemigos
-// THREAD-SAFETY: Usa mutex para acceder a _enemies y coordinar con otras operaciones
+// Loop principal que gestiona el movimiento de TODOS los enemigos activos
 void EntityManager::EnemyMovementLoop()
 {
     while (_movementActive)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        if (!_movementActive)
-            break;
+        if (!_currentRoom) continue;
 
-        // ===== OBTENER REFERENCIAS DE FORMA SEGURA =====
-        Lock();
-        Room* room = _currentRoom;
-        auto getPlayerPos = _getPlayerPositionCallback;
-        auto onAttack = _onEnemyAttackPlayer;
-        Unlock();
+        Vector2 playerPos = _getPlayerPositionCallback();
+        auto enemies = _currentRoom->GetEnemies();
 
-        if (room == nullptr)
-            continue;
-
-        // Obtener posición del jugador
-        Vector2 currentPlayerPosition = getPlayerPos();
-
-        // VERIFICAR POSICIÓN INVÁLIDA (indica game over)
-        if (currentPlayerPosition.X == -1000 && currentPlayerPosition.Y == -1000)
+        for (Enemy* enemy : enemies)
         {
-            break;  // Salir del loop, el juego terminó
-        }
-
-        // COPIAR LISTA DE ENEMIGOS PARA EVITAR RACE CONDITIONS
-        std::vector<Enemy*> enemiesInRoom = room->GetEnemies();
-
-        // ITERAR SOBRE LA COPIA, NO SOBRE room->GetEnemies()
-        for (Enemy* enemy : enemiesInRoom)
-        {
-            if (!_movementActive)
-                break;
-
-            // VERIFICAR QUE EL ENEMIGO AÚN EXISTA
-            if (enemy == nullptr)
-                continue;
-
-            // VERIFICAR SI ESTÁ EN LA LISTA GLOBAL (thread-safe)
-            bool isValid = false;
-            Lock();
-            auto it = std::find(_enemies.begin(), _enemies.end(), enemy);
-            isValid = (it != _enemies.end());
-            Unlock();
-
-            if (!isValid)
-                continue;  // Enemigo fue eliminado
-
-            // Verificar si puede actuar
-            if (!enemy->IsAlive() || !enemy->CanPerformAction())
-                continue;
-
-            Vector2 currentPos = enemy->GetPosition();
-
-            // ===== SISTEMA DE ATAQUE =====
-            if (IsAdjacent(currentPos, currentPlayerPosition))
-            {
-                // ATACAR - el callback verifica _gameOver internamente
-                onAttack(enemy);
-                enemy->UpdateActionTime();
-                continue;
-            }
-
-            // ===== SISTEMA DE MOVIMIENTO =====
-            Vector2 direction = enemy->GetRandomDirection();
-            Vector2 newPos = currentPos + direction;
-
-            if (CanEnemyMoveTo(newPos, currentPos, room, currentPlayerPosition))
-            {
-                // Verificar de nuevo que el enemigo existe antes de moverlo
-                Lock();
-                auto it = std::find(_enemies.begin(), _enemies.end(), enemy);
-                if (it == _enemies.end())
-                {
-                    Unlock();
-                    continue;  // Enemigo fue eliminado mientras verificábamos
-                }
-                Unlock();
-
-                // Limpiar posición anterior
-                room->GetMap()->SafePickNode(currentPos, [](Node* node) {
-                    if (node != nullptr)
-                    {
-                        node->SetContent(nullptr);
-                    }
-                    });
-
-                // Actualizar posición
-                enemy->SetPosition(newPos);
-
-                // Colocar en nueva posición
-                room->GetMap()->SafePickNode(newPos, [enemy](Node* node) {
-                    if (node != nullptr)
-                    {
-                        node->SetContent(enemy);
-                    }
-                    });
-
-                // Redibujar
-                room->GetMap()->SafePickNode(currentPos, [](Node* node) {
-                    if (node != nullptr)
-                    {
-                        node->DrawContent(Vector2(0, 0));
-                    }
-                    });
-
-                room->GetMap()->SafePickNode(newPos, [](Node* node) {
-                    if (node != nullptr)
-                    {
-                        node->DrawContent(Vector2(0, 0));
-                    }
-                    });
-
-                enemy->UpdateActionTime();
-            }
+            if (enemy && enemy->IsAlive())
+                MoveEnemy(enemy, _currentRoom, playerPos);
         }
     }
 }
 
-//Valida si un enemigo puede moverse a una posición específica
-// Verifica los siguientes casos:
-//   - No hay paredes
-//   - No hay portales
-//   - No está el jugador
-//   - No hay otro enemigo (evita colisiones)
-//   - No hay cofres ni items (pueden bloquear el paso)
-// THREAD-SAFETY: Usa Lock/Unlock para acceder a listas de entidades
-bool EntityManager::CanEnemyMoveTo(Vector2 newPosition, Vector2 currentPosition, Room* room, Vector2 playerPosition)
+void EntityManager::MoveEnemy(Enemy* enemy, Room* room, Vector2 playerPos)
 {
-    if (room == nullptr)
-        return false;
+    if (!enemy->CanPerformAction()) return;
 
-    bool canMove = true;
+    Vector2 current = enemy->GetPosition();
 
-    // Verificar si hay una pared
-    room->GetMap()->SafePickNode(newPosition, [&](Node* node) {
-        if (node != nullptr)
-        {
-            Wall* wall = node->GetContent<Wall>();
-            if (wall != nullptr)
-            {
-                canMove = false;
-            }
+    if (IsAdjacent(current, playerPos))
+    {
+        _onEnemyAttackPlayer(enemy);
+        enemy->UpdateActionTime();
+        return;
+    }
 
-            Portal* portal = node->GetContent<Portal>();
-            if (portal != nullptr) {
-                canMove = false;
-            }
-        }
+    Vector2 newPos = current + enemy->GetRandomDirection();
+
+    if (IsPositionBlocked(newPos, room))
+        return;
+
+    ClearMapPosition(room, current);
+    enemy->SetPosition(newPos);
+    PlaceContent(room, enemy, newPos);
+
+    enemy->UpdateActionTime();
+}
+
+// ======================
+// COLISIONES
+// ======================
+
+bool EntityManager::IsPositionBlocked(Vector2 position, Room* room)
+{
+    bool blocked = false;
+
+    room->GetMap()->SafePickNode(position, [&](Node* node) {
+        if (!node) return;
+
+        if (node->GetContent<Wall>() || node->GetContent<Portal>())
+            blocked = true;
         });
 
-    if (!canMove)
-        return false;
+    if (blocked) return true;
+    if (room->GetEnemyAt(position)) return true;
+    if (room->GetChestAt(position)) return true;
+    if (room->GetItemAt(position)) return true;
 
-    // Verificar si el jugador está en esa posición
-    if (newPosition.X == playerPosition.X && newPosition.Y == playerPosition.Y)
-    {
-        return false;
-    }
-
-    // Verificar si hay otro enemigo (excepto el actual)
-    Lock();
-    for (Enemy* enemy : _enemies)
-    {
-        Vector2 enemyPos = enemy->GetPosition();
-        if (enemyPos.X == newPosition.X && enemyPos.Y == newPosition.Y)
-        {
-            // Si es la posición actual del enemigo que se está moviendo, está bien
-            if (!(enemyPos.X == currentPosition.X && enemyPos.Y == currentPosition.Y))
-            {
-                canMove = false;
-                break;
-            }
-        }
-    }
-
-    if (canMove)
-    {
-        for (Chest* chest : _chests)
-        {
-            Vector2 chestPos = chest->GetPosition();
-            if (chestPos.X == newPosition.X && chestPos.Y == newPosition.Y)
-            {
-                canMove = false;
-                break;
-            }
-        }
-    }
-
-    if (canMove)
-    {
-        for (Item* item : _items)
-        {
-            Vector2 itemPos = item->GetPosition();
-            if (itemPos.X == newPosition.X && itemPos.Y == newPosition.Y)
-            {
-                canMove = false;
-                break;
-            }
-        }
-    }
-
-    Unlock();
-
-    return canMove;
+    return false;
 }
 
-Vector2 EntityManager::FindValidSpawnPosition(Room* room)
+// ======================
+// MAPA
+// ======================
+
+void EntityManager::ClearMapPosition(Room* room, Vector2 pos)
 {
-    if (room == nullptr)
-        return Vector2(-1, -1);
+    room->GetMap()->SafePickNode(pos, [](Node* n) {
+        if (n) n->SetContent(nullptr);
+        });
 
-    Vector2 roomSize = room->GetSize();
+    room->GetMap()->SafePickNode(pos, [](Node* n) {
+        if (n) n->DrawContent(Vector2(0, 0));
+        });
+}
 
-    // Intentar hasta 20 veces encontrar una posición válida
-    for (int attempt = 0; attempt < 20; attempt++)
-    {
-        // Generar posición aleatoria evitando bordes (paredes)
-        int randomX = 2 + (rand() % (roomSize.X - 4));
-        int randomY = 2 + (rand() % (roomSize.Y - 4));
-        Vector2 pos(randomX, randomY);
+void EntityManager::PlaceContent(Room* room, INodeContent* content, Vector2 pos)
+{
+    room->GetMap()->SafePickNode(pos, [content](Node* n) {
+        if (n) n->SetContent(content);
+        });
 
-        bool isValid = true;
+    room->GetMap()->SafePickNode(pos, [](Node* n) {
+        if (n) n->DrawContent(Vector2(0, 0));
+        });
+}
 
-        // Verificar que no haya contenido en esa posición
-        room->GetMap()->SafePickNode(pos, [&](Node* node) {
-            if (node != nullptr && node->GetContent() != nullptr)
-            {
-                isValid = false;
-            }
-            });
+// ======================
+// UTILIDADES
+// ======================
 
-        if (isValid)
-            return pos;
-    }
+bool EntityManager::IsAdjacent(Vector2 a, Vector2 b)
+{
+    return abs(a.X - b.X) + abs(a.Y - b.Y) == 1;
+}
 
-    return Vector2(-1, -1);
+ItemType EntityManager::SelectLoot()
+{
+    return static_cast<ItemType>(rand() % 3);
+}
+
+void EntityManager::DropLoot(Vector2 position, ItemType lootItem, Room* room)
+{
+    SpawnItem(position, lootItem, room);
+}
+
+void EntityManager::RegisterLoadedEntities(Room* room)
+{
+    for (Enemy* e : room->GetEnemies())
+        if (std::find(_enemies.begin(), _enemies.end(), e) == _enemies.end())
+            _enemies.push_back(e);
+
+    for (Chest* c : room->GetChests())
+        if (std::find(_chests.begin(), _chests.end(), c) == _chests.end())
+            _chests.push_back(c);
+
+    for (Item* i : room->GetItems())
+        if (std::find(_items.begin(), _items.end(), i) == _items.end())
+            _items.push_back(i);
+}
+
+void EntityManager::ClearAllEntities()
+{
+    for (Enemy* e : _enemies) delete e;
+    for (Chest* c : _chests) delete c;
+    for (Item* i : _items) delete i;
+
+    _enemies.clear();
+    _chests.clear();
+    _items.clear();
 }
