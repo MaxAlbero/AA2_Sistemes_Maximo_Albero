@@ -42,7 +42,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -124,8 +124,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="dist\jsoncpp.cpp" />
+    <ClCompile Include="Game\Chest.cpp" />
+    <ClCompile Include="Game\DungeonMap.cpp" />
+    <ClCompile Include="Game\Enemy.cpp" />
+    <ClCompile Include="Game\EntityManager.cpp" />
     <ClCompile Include="Game\Game.cpp" />
+    <ClCompile Include="Game\Item.cpp" />
     <ClCompile Include="Game\main.cpp" />
+    <ClCompile Include="Game\Player.cpp" />
+    <ClCompile Include="Game\Room.cpp" />
     <ClCompile Include="Game\SaveManager.cpp" />
     <ClCompile Include="Game\UI.cpp" />
     <ClCompile Include="InputSystem\InputSystem.cpp" />

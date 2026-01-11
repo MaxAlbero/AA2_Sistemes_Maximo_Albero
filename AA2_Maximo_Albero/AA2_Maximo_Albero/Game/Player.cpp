@@ -1,5 +1,9 @@
 #include "Player.h"
 
+Player::~Player() {
+
+}
+
 void Player::Draw(Vector2 pos)
 {
     CC::Lock();
@@ -11,9 +15,9 @@ void Player::Draw(Vector2 pos)
 }
 
 Vector2 Player::GetPosition() {
-    _playerMutex.lock();
+    Lock();
     Vector2 pos = _position;
-    _playerMutex.unlock();
+    Unlock();
     return pos;
 }
 
@@ -23,28 +27,35 @@ void Player::SetPosition(Vector2 newPos) {
 
 bool Player::CanPerformAction()
 {
-    _playerMutex.lock();
+    Lock();
+
+    // Obtener tiempo actual
     auto currentTime = std::chrono::steady_clock::now();
+
+    // Calcular cuánto tiempo ha pasado desde la última acción
     auto timeSinceLastAction = std::chrono::duration_cast<std::chrono::milliseconds>(
         currentTime - _lastActionTime
     ).count();
+
+    // Verificar si ha pasado el tiempo de cooldown (por defecto 500ms)
     bool canAct = timeSinceLastAction >= _actionCooldownMs;
-    _playerMutex.unlock();
+
+    Unlock();
     return canAct;
 }
 
 void Player::UpdateActionTime()
 {
-    _playerMutex.lock();
+    Lock();
     _lastActionTime = std::chrono::steady_clock::now();
-    _playerMutex.unlock();
+    Unlock();
 }
 
 void Player::SetActionCooldown(int milliseconds)
 {
-    _playerMutex.lock();
+    Lock();
     _actionCooldownMs = milliseconds;
-    _playerMutex.unlock();
+    Unlock();
 }
 
 void Player::Attack(IDamageable* entity) const {
@@ -53,7 +64,7 @@ void Player::Attack(IDamageable* entity) const {
 }
 
 void Player::ReceiveDamage(int damageToReceive) {
-    _playerMutex.lock();
+    Lock();
     _hp -= damageToReceive;
 
     //std::cout << "¡El jugador recibe " << damageToReceive << " de daño! HP: " << _hp << std::endl;
@@ -64,26 +75,26 @@ void Player::ReceiveDamage(int damageToReceive) {
         //std::cout << "¡GAME OVER!" << std::endl;
     }
 
-    _playerMutex.unlock();
+    Unlock();
 }
 
 void Player::AddCoin()
 {
-    _playerMutex.lock();
+    Lock();
     _coins += 10;
-    _playerMutex.unlock();
+    Unlock();
 }
 
 void Player::AddPotion()
 {
-    _playerMutex.lock();
+    Lock();
     _potionCount++;
-    _playerMutex.unlock();
+    Unlock();
 }
 
 void Player::ChangeWeapon()
 {
-    _playerMutex.lock();
+    Lock();
 
     switch (_weapon) {
     case 0:
@@ -96,83 +107,92 @@ void Player::ChangeWeapon()
         _weapon = 0;
     }
 
-    _playerMutex.unlock();
+    Unlock();
 }
 
 void Player::UsePotion()
 {
-    _playerMutex.lock();
+    Lock();
+
+    // NUEVO: No hacer nada si está muerto
+    if (_hp <= 0)
+    {
+        Unlock();
+        return;
+    }
 
     if (_potionCount > 0)
     {
         _potionCount--;
-        _hp += 20; // Recupera 20 HP
+        _hp += 20;
 
         if (_hp > _maxHp)
             _hp = _maxHp;
 
-        CC::Lock();
-        CC::SetPosition(0, 18);  // Posición fija debajo del mapa
-        std::cout << "¡Poción usada! HP: " << _hp << "    " << std::endl;
-        CC::Unlock();
-    }
-    else
-    {
+        // Mostrar feedback visual
         CC::Lock();
         CC::SetPosition(0, 18);
-        std::cout << "No tienes pociones" << std::endl;
+        if (_messages != nullptr)
+        {
+            _messages->PushMessage("¡Pocion usada!", 2);
+        }
         CC::Unlock();
     }
 
-    _playerMutex.unlock();
+    Unlock();
 }
 
 
+//   - Espada (_weapon == 0): Rango 1 (solo casilla adyacente)
+//   - Lanza (_weapon == 1): Rango 2 (puede atacar 2 casillas de distancia)
 int Player::GetAttackRange()
 {
-    _playerMutex.lock();
-    int range = (_weapon == 0) ? 1 : 2; // Espada = 1, Lanza = 2
-    _playerMutex.unlock();
+    Lock();
+
+    // Determinar rango según arma equipada
+    int range = (_weapon == 0) ? 1 : 2;
+
+    Unlock();
     return range;
 }
 
 int Player::GetHP()
 {
-    _playerMutex.lock();
+    Lock();
     int hp = _hp;
-    _playerMutex.unlock();
+    Unlock();
     return hp;
 }
 
 int Player::GetCoins()
 {
-    _playerMutex.lock();
+    Lock();
     int coins = _coins;
-    _playerMutex.unlock();
+    Unlock();
     return coins;
 }
 
 int Player::GetPotionCount()
 {
-    _playerMutex.lock();
+    Lock();
     int potions = _potionCount;
-    _playerMutex.unlock();
+    Unlock();
     return potions;
 }
 
 int Player::GetWeapon()
 {
-    _playerMutex.lock();
+    Lock();
     int weapon = _weapon;
-    _playerMutex.unlock();
+    Unlock();
     return weapon;
 }
 
 bool Player::IsAlive()
 {
-    _playerMutex.lock();
+    Lock();
     bool alive = _hp > 0;
-    _playerMutex.unlock();
+    Unlock();
     return alive;
 }
 

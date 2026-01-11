@@ -8,6 +8,7 @@
 #include "UI.h"
 #include <mutex>
 #include "SaveManager.h"
+#include "../Utils/MessageSystem.h"
 
 class Game
 {
@@ -17,6 +18,8 @@ public:
 
     void Start();
     void Stop();
+
+    bool IsGameOver() const { return _gameOver; }
 
 private:
     DungeonMap* _dungeonMap;
@@ -28,10 +31,13 @@ private:
     Vector2 _playerPosition;
 
     SaveManager* _saveManager;
+    MessageSystem* _messages;
 
     int _currentRoomIndex;
     bool _running;
     std::mutex _gameMutex;
+
+    bool _gameOver;
 
     void InitializeDungeon();
     void DrawCurrentRoom();
@@ -55,4 +61,6 @@ private:
     void OnMoveDown();
     void OnMoveLeft();
     void OnMoveRight();
+
+    void CheckPlayerDeath();
 };
