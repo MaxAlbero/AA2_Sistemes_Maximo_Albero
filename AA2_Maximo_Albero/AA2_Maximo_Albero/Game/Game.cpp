@@ -547,12 +547,16 @@ void Game::MovePlayer(Vector2 direction)
 
 void Game::ChangeRoom(PortalDir direction)
 {
+    // ===== FASE 1: PREPARACIÓN (sin locks) =====
+
+    // Calcular nueva posición
+    int newX, newY;
+
     _gameMutex.lock();
-
     Room* oldRoom = _dungeonMap->GetActiveRoom();
-
-    int newX = _dungeonMap->GetCurrentX();
-    int newY = _dungeonMap->GetCurrentY();
+    newX = _dungeonMap->GetCurrentX();
+    newY = _dungeonMap->GetCurrentY();
+    _gameMutex.unlock();
 
     switch (direction)
     {
@@ -562,15 +566,27 @@ void Game::ChangeRoom(PortalDir direction)
     case PortalDir::Down:   newY++; break;
     }
 
-    _gameMutex.unlock();
-
-    // ===== PASO 1: DETENER SPAWNER =====
+    // ===== FASE 2: DETENER TODOS LOS SISTEMAS =====
+    // CRÍTICO: Detener spawner primero
     _spawner->Stop();
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
+    // ===== FASE 3: DETENER THREADS DE ENEMIGOS DE LA SALA ACTUAL =====
+    // Esto DEBE hacerse ANTES de tocar el mapa
+    if (oldRoom != nullptr)
+    {
+        for (Enemy* enemy : oldRoom->GetEnemies())
+        {
+            if (enemy != nullptr)
+                enemy->StopMovement();
+        }
+    }
+
+    // Esperar a que todos los threads terminen
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // ===== FASE 4: AHORA SÍ, MODIFICAR EL MAPA (con lock) =====
     _gameMutex.lock();
 
-    // ===== PASO 2: DESACTIVAR SALA ANTERIOR =====
     if (oldRoom != nullptr)
     {
         // Quitar jugador del mapa
@@ -579,14 +595,11 @@ void Game::ChangeRoom(PortalDir direction)
                 node->SetContent(nullptr);
             });
 
-        // Detener threads de enemigos y quitar del mapa
-        DeactivateRoomEntities(oldRoom);
+        // Desactivar entidades (ya no hay threads corriendo)
+        oldRoom->DeactivateEntities();
     }
 
-    // Esperar a que todos los threads de enemigos terminen completamente
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-    // ===== PASO 3: CAMBIAR A NUEVA SALA =====
+    // Cambiar a nueva sala
     _dungeonMap->SetActiveRoom(newX, newY);
     Room* newRoom = _dungeonMap->GetActiveRoom();
 
@@ -596,7 +609,7 @@ void Game::ChangeRoom(PortalDir direction)
         return;
     }
 
-    // Calcular nueva posición del jugador
+    // Calcular posición del jugador
     PortalDir oppositeDir = GetOppositeDirection(direction);
     _playerPosition = newRoom->GetSpawnPositionFromPortal(oppositeDir);
 
@@ -605,25 +618,20 @@ void Game::ChangeRoom(PortalDir direction)
         _player->SetPosition(_playerPosition);
     }
 
-    // ===== PASO 4: COLOCAR ENTIDADES EN MAPA (sin threads) =====
+    // Activar entidades en el mapa (sin threads aún)
     ActivateRoomEntities(newRoom);
     UpdatePlayerOnMap();
 
     _gameMutex.unlock();
 
-    // ===== PASO 5: LIMPIAR Y DIBUJAR =====
-    // CRÍTICO: Limpiar DESPUÉS de desactivar todo pero ANTES de iniciar threads
     CC::Clear();
     DrawCurrentRoom();
+
     InitializeCurrentRoom();
 
-    // ===== PASO 6: ACTUALIZAR ENTITYMANAGER =====
     _entityManager->SetCurrentRoom(newRoom);
 
-    // ===== PASO 7: AHORA SÍ, INICIAR THREADS DE ENEMIGOS =====
     StartRoomEnemyThreads(newRoom);
-
-    // ===== PASO 8: REINICIAR SPAWNER =====
     _spawner->Start(newRoom);
 }
 
