@@ -64,12 +64,12 @@ public:
 
     Vector2 GetRandomDirection();
 
-    // Gestión del thread individual
+    // Individual enemy movement thread
     void StartMovement();
     void StopMovement();
     bool IsActive() const { return _isActive; }
 
-    // Configurar callbacks para que el enemigo pueda consultar el mundo
+    // Callbacks to query the world (EntityManager/Game)
     void SetMovementCallbacks(
         std::function<bool(Enemy*, Vector2)> canMoveCallback,
         std::function<Vector2()> getPlayerPosCallback,

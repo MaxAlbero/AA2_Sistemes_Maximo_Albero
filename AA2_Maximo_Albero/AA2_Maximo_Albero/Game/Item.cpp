@@ -5,17 +5,17 @@ void Item::Draw(Vector2 pos)
     CC::Lock();
     CC::SetPosition(pos.X, pos.Y);
 
-    // Dibujar según el tipo
+    // Draw based on the item type
     switch (_type)
     {
     case ItemType::COIN:
-        std::cout << "k";  // 'c' para coin
+        std::cout << "k";
         break;
     case ItemType::POTION:
-        std::cout << "o";  // 'o' para potion
+        std::cout << "o";
         break;
     case ItemType::WEAPON:
-        std::cout << "w";  // 'w' para weapon
+        std::cout << "w";
         break;
     }
 

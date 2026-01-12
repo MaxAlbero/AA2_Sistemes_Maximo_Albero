@@ -21,7 +21,6 @@ private:
 
     std::mutex _managerMutex;
 
-    // Ya NO tenemos thread central - cada enemigo tiene el suyo
     Room* _currentRoom;
     std::function<Vector2()> _getPlayerPositionCallback;
     std::function<void(Enemy*)> _onEnemyAttackPlayer;
@@ -36,7 +35,7 @@ public:
 
     void SetCurrentRoom(Room* room);
 
-    // ===== GESTIÓN DE ENTIDADES =====
+    // ===== ENTITY MANAGEMENT =====
     void SpawnEnemy(Vector2 position, Room* room);
     void SpawnChest(Vector2 position, Room* room);
     void SpawnItem(Vector2 position, ItemType type, Room* room);
@@ -44,7 +43,7 @@ public:
     void CleanupDeadEnemies(Room* room);
     void CleanupBrokenChests(Room* room);
 
-    // Getters específicos
+    // Specific getters
     Enemy* GetEnemyAtPosition(Vector2 position, Room* room);
     Chest* GetChestAtPosition(Vector2 position, Room* room);
     Item* GetItemAtPosition(Vector2 position, Room* room);
@@ -53,7 +52,7 @@ public:
     bool IsPositionOccupiedByChest(Vector2 position);
     bool IsPositionOccupiedByItem(Vector2 position);
 
-    // Getters de listas
+    // List getters
     std::vector<Enemy*> GetEnemies();
     std::vector<Chest*> GetChests();
     std::vector<Item*> GetItems();
@@ -63,56 +62,56 @@ public:
     int GetEnemyCount();
     int GetChestCount();
 
-    // Sistema de combate
+    // Combat system
     bool TryAttackEnemyAt(Vector2 position, Player* attacker, Room* room);
     bool TryAttackChestAt(Vector2 position, Player* attacker, Room* room);
 
-    // Sistema de loot
+    // Loot system
     ItemType SelectLoot();
     void DropLoot(Vector2 position, ItemType lootItem, Room* room);
     void RemoveItem(Item* itemToRemove, Room* room);
 
-    // Inicialización
+    // Initialization
     void InitializeRoomEntities(Room* room, int roomX, int roomY);
     void RegisterLoadedEntities(Room* room);
 
-    // Configuración de callbacks para enemigos
+    // Enemy callback configuration
     void SetupEnemyCallbacks(std::function<Vector2()> getPlayerPositionCallback,
         std::function<void(Enemy*)> onEnemyAttackPlayer);
 
     void ConfigureRoomEnemies(Room* room);
 
-    // Validación de movimiento (llamado desde threads de enemigos)
+    // Movement validation (called from enemy threads)
     bool CanEnemyMoveTo(Enemy* movingEnemy, Vector2 newPosition);
 
     void Lock() { _managerMutex.lock(); }
     void Unlock() { _managerMutex.unlock(); }
 
 private:
-    // ===== MÉTODOS AUXILIARES GENÉRICOS =====
+    // ===== GENERIC HELPER METHODS =====
 
-    // Spawn genérico en el mapa
+    // Generic map spawn
     template<typename T>
     void PlaceEntityOnMap(T* entity, Vector2 position, Room* room);
 
-    // Limpiar entidad del mapa
+    // Clear entity from map
     void ClearPositionOnMap(Vector2 position, Room* room);
 
-    // Redibujar posición
+    // Redraw position
     void RedrawPosition(Vector2 position, Room* room);
 
-    // Templates para obtención genérica
+    // Generic getters
     template<typename T>
     T* GetEntityAtPosition(Vector2 position, Room* room);
 
     template<typename T>
     bool IsPositionOccupiedBy(Vector2 position);
 
-    // Validación
+    // Validation
     Vector2 FindValidSpawnPosition(Room* room);
 };
 
-// ===== IMPLEMENTACIÓN DE TEMPLATES =====
+// ===== TEMPLATE IMPLEMENTATIONS =====
 
 template<typename T>
 inline T* EntityManager::GetEntityAtPosition(Vector2 position, Room* room)

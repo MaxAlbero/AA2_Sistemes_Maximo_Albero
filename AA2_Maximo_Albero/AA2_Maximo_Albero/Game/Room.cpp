@@ -27,13 +27,14 @@ void Room::RemoveItem(Item* item)
     }
 }
 
-// Coloca todas las entidades de la sala en el mapa visual
-// Se llama al entrar a una sala (ChangeRoom)
-// Las entidades ya existen en memoria (_enemies, _chests, _items), Esta función solo las hace visibles y las coloca en el NodeMap
-// Permite que enemigos/cofres persistan entre visitas a la sala
+// Places all room entities into the visual map
+// Called when entering a room (ChangeRoom)
+// Entities already exist in memory (_enemies, _chests, _items),
+// this function only makes them visible and places them in the NodeMap
+// Allows enemies/chests to persist between room visits
 void Room::ActivateEntities()
 {
-    // Colocar enemigos en el mapa
+    // Put enemies in the map
     for (Enemy* enemy : _enemies)
     {
         if (enemy != nullptr)
@@ -49,7 +50,7 @@ void Room::ActivateEntities()
         }
     }
 
-    // Colocar cofres en el mapa
+    // Put chests in the map
     for (Chest* chest : _chests)
     {
         if (chest != nullptr)
@@ -64,7 +65,7 @@ void Room::ActivateEntities()
         }
     }
 
-    // Colocar items en el mapa
+    // Put items in the map
     for (Item* item : _items)
     {
         if (item != nullptr)
@@ -80,16 +81,16 @@ void Room::ActivateEntities()
     }
 }
 
-// Quita todas las entidades del mapa visual
-// Se llama al salir de una sala (ChangeRoom)
-// NO elimina las entidades de memoria, solo las quita del NodeMap
-// PROPÓSITO:
-//   - Evitar que se dibujen cuando no están en la sala activa
-//   - Prevenir race conditions con threads que acceden al mapa
-//   - Mantener estado de entidades para cuando volvamos a la sala
+// Removes all entities from the visual map
+// Called when leaving a room (ChangeRoom)
+// Does NOT delete the entities from memory, only removes them from the NodeMap
+// PURPOSE:
+//   - Prevent them from being drawn when the room is not active
+//   - Prevent race conditions with threads accessing the map
+//   - Preserve entity state when returning to the room
 void Room::DeactivateEntities()
 {
-    // Quitar enemigos del mapa
+    // Remove enemies from the map
     for (Enemy* enemy : _enemies)
     {
         if (enemy != nullptr)
@@ -104,7 +105,7 @@ void Room::DeactivateEntities()
         }
     }
 
-    // Quitar cofres del mapa
+    // Remove chests from the map
     for (Chest* chest : _chests)
     {
         if (chest != nullptr)
@@ -119,7 +120,7 @@ void Room::DeactivateEntities()
         }
     }
 
-    // Quitar items del mapa
+    // Remove items from the map
     for (Item* item : _items)
     {
         if (item != nullptr)
@@ -140,17 +141,17 @@ void Room::Draw()
     _map->UnSafeDraw();
 }
 
-// Crea portales en los bordes de la sala según su posición en el mundo
-// PARÁMETROS:
-//   - worldX, worldY: Coordenadas de esta sala en el mapamundi
-//   - worldWidth, worldHeight: Tamaño total del mapamundi (3x3)
-// LÓGICA: Solo genera portales si hay sala adyacente en esa dirección
+// Creates portals on the room borders based on world position
+// PARAMETERS:
+//   - worldX, worldY: This room's coordinates in the world map
+//   - worldWidth, worldHeight: Total world map size (3x3)
+// LOGIC: Only generates portals if there is an adjacent room in that direction
 void Room::GeneratePortals(int worldX, int worldY, int worldWidth, int worldHeight)
 {
     int centerX = _size.X / 2;
     int centerY = _size.Y / 2;
 
-    // Portal Izquierda
+    // Left portal
     if (worldX > 0)
     {
         Vector2 portalPos(0, centerY);
@@ -164,7 +165,7 @@ void Room::GeneratePortals(int worldX, int worldY, int worldWidth, int worldHeig
             });
     }
 
-    // Portal Derecha
+    // Right portal
     if (worldX < worldWidth - 1)
     {
         Vector2 portalPos(_size.X - 1, centerY);
@@ -177,7 +178,7 @@ void Room::GeneratePortals(int worldX, int worldY, int worldWidth, int worldHeig
             });
     }
 
-    // Portal Arriba
+    // Upper portal
     if (worldY > 0)
     {
         Vector2 portalPos(centerX, 0);
@@ -190,7 +191,7 @@ void Room::GeneratePortals(int worldX, int worldY, int worldWidth, int worldHeig
             });
     }
 
-    // Portal Abajo
+    // Bottom portal
     if (worldY < worldHeight - 1)
     {
         Vector2 portalPos(centerX, _size.Y - 1);
@@ -204,9 +205,9 @@ void Room::GeneratePortals(int worldX, int worldY, int worldWidth, int worldHeig
     }
 }
 
-//Calcula dónde debe aparecer el jugador al entrar por un portal
-// LÓGICA: Spawn en el lado OPUESTO al portal por el que entramos
-// Evita que el jugador aparezca encima del portal y se teleporte inmediatamente
+// Calculates where the player should spawn when entering from a portal
+// LOGIC: Spawn on the OPPOSITE side of the portal used
+// Prevents the player from spawning on the portal and teleporting again instantly
 Vector2 Room::GetSpawnPositionFromPortal(PortalDir fromDirection)
 {
     int centerX = _size.X / 2;
@@ -215,16 +216,16 @@ Vector2 Room::GetSpawnPositionFromPortal(PortalDir fromDirection)
     switch (fromDirection)
     {
     case PortalDir::Left:
-        // Vino desde la izquierda, spawn a la derecha del portal izquierdo
+        // Came from the left, spawn a the right side of the left portal
         return Vector2(1, centerY);
     case PortalDir::Right:
-        // Vino desde la derecha, spawn a la izquierda del portal derecho
+        // Came from the right, spawn a the left side of the right portal
         return Vector2(_size.X - 2, centerY);
     case PortalDir::Up:
-        // Vino desde arriba, spawn debajo del portal superior
+        // Came from up, spawn a the bottom of the upper portal
         return Vector2(centerX, 1);
     case PortalDir::Down:
-        // Vino desde abajo, spawn arriba del portal inferior
+        // Came from the bottom, spawn a the upper side of the bottom portal
         return Vector2(centerX, _size.Y - 2);
     }
 

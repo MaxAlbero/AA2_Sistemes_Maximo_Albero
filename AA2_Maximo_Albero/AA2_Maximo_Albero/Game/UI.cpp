@@ -29,11 +29,11 @@ void UI::DrawSidebar()
 
     CC::Lock();
 
-    // Monedas
+    // Coins
     CC::SetPosition(xOffset, y++);
     std::cout << "Monedas: " << _player->GetCoins() << "  ";
 
-    // Vida
+    // HP
     CC::SetPosition(xOffset, y++);
     int hp = _player->GetHP();
     std::cout << "Vida: ";
@@ -42,11 +42,11 @@ void UI::DrawSidebar()
     else
         std::cout << hp << "  ";
 
-    // Pociones
+    // Potions
     CC::SetPosition(xOffset, y++);
     std::cout << "Pociones: " << _player->GetPotionCount() << "  ";
 
-    // Arma
+    // Weapons
     CC::SetPosition(xOffset, y++);
     int weapon = _player->GetWeapon();
     std::cout << "Arma: " << (weapon == 0 ? "Espada" : "Lanza ") << "  ";
@@ -54,8 +54,7 @@ void UI::DrawSidebar()
     y++;
     y = BOTTOM_UI_TEXT_AREA;
 
-    // Leyenda
-
+    // Legend
     CC::SetPosition(xOffset, y + 3);
     std::cout << "Usa WASD para moverte." << std::endl;
     CC::SetPosition(xOffset, y);

@@ -29,11 +29,11 @@ public:
     }
 
     bool SaveGame(DungeonMap* dungeonMap, Player* player);
-    bool LoadGame(DungeonMap* dungeonMap, Player* player, EntityManager* entityManager); // MODIFICADO
+    bool LoadGame(DungeonMap* dungeonMap, Player* player, EntityManager* entityManager);
 
     bool SaveFileExists();
 
-    void StartAutoSave(DungeonMap* dungeonMap, Player* player, EntityManager* entityManager); // MODIFICADO
+    void StartAutoSave(DungeonMap* dungeonMap, Player* player, EntityManager* entityManager);
     void StopAutoSave();
 
     void Lock() { _saveMutex.lock(); }
@@ -49,7 +49,7 @@ private:
 
     DungeonMap* _dungeonMapRef;
     Player* _playerRef;
-    EntityManager* _entityManagerRef; // AÑADIDO
+    EntityManager* _entityManagerRef;
 
     void AutoSaveLoop();
 };

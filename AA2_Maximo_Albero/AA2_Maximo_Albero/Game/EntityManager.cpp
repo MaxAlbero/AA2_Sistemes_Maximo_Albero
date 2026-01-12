@@ -7,7 +7,7 @@ void EntityManager::SetCurrentRoom(Room* room)
     Unlock();
 }
 
-// ===== MÉTODOS AUXILIARES GENÉRICOS =====
+// ===== GENERIC HELPER METHODS =====
 
 void EntityManager::ClearPositionOnMap(Vector2 position, Room* room)
 {
@@ -35,7 +35,7 @@ void EntityManager::RedrawPosition(Vector2 position, Room* room)
         });
 }
 
-// ===== SPAWN DE ENTIDADES =====
+// ===== ENTITY SPAWNING =====
 
 void EntityManager::SpawnEnemy(Vector2 position, Room* room)
 {
@@ -51,7 +51,7 @@ void EntityManager::SpawnEnemy(Vector2 position, Room* room)
     room->AddEnemy(enemy);
     PlaceEntityOnMap(enemy, position, room);
 
-    // Configurar callbacks antes de iniciar el thread
+    // Configure callbacks before starting the thread
     enemy->SetMovementCallbacks(
         [this](Enemy* e, Vector2 newPos) { return this->CanEnemyMoveTo(e, newPos); },
         _getPlayerPositionCallback,
@@ -91,7 +91,7 @@ void EntityManager::SpawnItem(Vector2 position, ItemType type, Room* room)
     PlaceEntityOnMap(item, position, room);
 }
 
-// ===== CLEANUP DE ENTIDADES =====
+// ===== ENTITY CLEANUP =====
 
 void EntityManager::CleanupDeadEnemies(Room* room)
 {
@@ -108,11 +108,11 @@ void EntityManager::CleanupDeadEnemies(Room* room)
             enemy->StopMovement();
             Vector2 enemyPos = enemy->GetPosition();
 
-            // Limpiar del mapa
+            // Clear from map
             ClearPositionOnMap(enemyPos, room);
             RedrawPosition(enemyPos, room);
 
-            // Eliminar de lista global
+            // Remove from global list
             Lock();
             auto globalIt = std::find(_enemies.begin(), _enemies.end(), enemy);
             if (globalIt != _enemies.end())
@@ -121,7 +121,7 @@ void EntityManager::CleanupDeadEnemies(Room* room)
             }
             Unlock();
 
-            // Dropear loot y eliminar
+            // Drop loot and delete
             ItemType loot = SelectLoot();
             delete enemy;
             it = enemies.erase(it);
@@ -148,11 +148,11 @@ void EntityManager::CleanupBrokenChests(Room* room)
         {
             Vector2 chestPos = chest->GetPosition();
 
-            // Limpiar del mapa
+            // Clear from map
             ClearPositionOnMap(chestPos, room);
             RedrawPosition(chestPos, room);
 
-            // Eliminar de lista global
+            // Remove from global list
             Lock();
             auto globalIt = std::find(_chests.begin(), _chests.end(), chest);
             if (globalIt != _chests.end())
@@ -161,7 +161,7 @@ void EntityManager::CleanupBrokenChests(Room* room)
             }
             Unlock();
 
-            // Dropear loot y eliminar
+            // Drop loot and delete
             ItemType loot = SelectLoot();
             delete chest;
             it = chests.erase(it);
@@ -174,7 +174,7 @@ void EntityManager::CleanupBrokenChests(Room* room)
     }
 }
 
-// ===== GETTERS DE ENTIDADES =====
+// ===== ENTITY GETTERS =====
 
 Enemy* EntityManager::GetEnemyAtPosition(Vector2 position, Room* room)
 {
@@ -272,7 +272,7 @@ int EntityManager::GetChestCount()
     return count;
 }
 
-// ===== SISTEMA DE COMBATE =====
+// ===== COMBAT SYSTEM =====
 
 bool EntityManager::TryAttackEnemyAt(Vector2 position, Player* attacker, Room* room)
 {
@@ -328,11 +328,11 @@ bool EntityManager::TryAttackChestAt(Vector2 position, Player* attacker, Room* r
     return false;
 }
 
-// ===== SISTEMA DE LOOT =====
+// ===== LOOT SYSTEM =====
 
 ItemType EntityManager::SelectLoot()
 {
-    srand((unsigned int)time(NULL));
+    srand((unsigned int)time(NULL)); // THIS IS HERE TO ENSURE RANDOM LOOT SELECTION. I COULDN'T FIX IT ANY OTHER WAY.
 
     int max = 3;
     int min = 0;
@@ -368,11 +368,11 @@ void EntityManager::RemoveItem(Item* itemToRemove, Room* room)
         {
             Vector2 itemPos = itemToRemove->GetPosition();
 
-            // Limpiar del mapa
+            // Clear from map
             ClearPositionOnMap(itemPos, room);
             RedrawPosition(itemPos, room);
 
-            // Eliminar de la lista global
+            // Remove from global list
             Lock();
             auto globalIt = std::find(_items.begin(), _items.end(), itemToRemove);
             if (globalIt != _items.end())
@@ -381,7 +381,7 @@ void EntityManager::RemoveItem(Item* itemToRemove, Room* room)
             }
             Unlock();
 
-            // Eliminar de la lista de la sala
+            // Remove from room list
             delete itemToRemove;
             items.erase(it);
             break;
@@ -389,7 +389,7 @@ void EntityManager::RemoveItem(Item* itemToRemove, Room* room)
     }
 }
 
-// ===== INICIALIZACIÓN =====
+// ===== INITIALIZATION =====
 
 void EntityManager::InitializeRoomEntities(Room* room, int roomX, int roomY)
 {
@@ -428,7 +428,7 @@ void EntityManager::RegisterLoadedEntities(Room* room)
 
     Lock();
 
-    // Registrar enemigos
+    // Register enemies
     for (Enemy* enemy : room->GetEnemies())
     {
         if (enemy != nullptr)
@@ -441,7 +441,7 @@ void EntityManager::RegisterLoadedEntities(Room* room)
         }
     }
 
-    // Registrar cofres
+    // Register chests
     for (Chest* chest : room->GetChests())
     {
         if (chest != nullptr)
@@ -454,7 +454,7 @@ void EntityManager::RegisterLoadedEntities(Room* room)
         }
     }
 
-    // Registrar items
+    // Register items
     for (Item* item : room->GetItems())
     {
         if (item != nullptr)
@@ -470,7 +470,7 @@ void EntityManager::RegisterLoadedEntities(Room* room)
     Unlock();
 }
 
-// ===== CONFIGURACIÓN DE CALLBACKS =====
+// ===== CALLBACK SETUP =====
 
 void EntityManager::SetupEnemyCallbacks(std::function<Vector2()> getPlayerPositionCallback,
     std::function<void(Enemy*)> onEnemyAttackPlayer)
@@ -481,7 +481,7 @@ void EntityManager::SetupEnemyCallbacks(std::function<Vector2()> getPlayerPositi
     Unlock();
 }
 
-// Configura los callbacks de todos los enemigos activos en una sala
+// Configures callbacks for all active enemies in a room
 void EntityManager::ConfigureRoomEnemies(Room* room)
 {
     if (room == nullptr)
@@ -500,10 +500,10 @@ void EntityManager::ConfigureRoomEnemies(Room* room)
     }
 }
 
-// ===== VALIDACIÓN DE MOVIMIENTO =====
+// ===== MOVEMENT VALIDATION =====
 
-// Valida si un enemigo puede moverse a una posición
-// Es llamado desde el thread del enemigo individual
+// Validates whether an enemy can move to a position
+// Called from the enemy's individual thread
 bool EntityManager::CanEnemyMoveTo(Enemy* movingEnemy, Vector2 newPosition)
 {
     if (movingEnemy == nullptr)
@@ -520,7 +520,7 @@ bool EntityManager::CanEnemyMoveTo(Enemy* movingEnemy, Vector2 newPosition)
     Vector2 currentPosition = movingEnemy->GetPosition();
     Vector2 playerPosition = getPlayerPos();
 
-    // Verificar paredes y portales
+    // Check walls and portals
     bool canMove = true;
     room->GetMap()->SafePickNode(newPosition, [&](Node* node) {
         if (node != nullptr)
@@ -542,7 +542,7 @@ bool EntityManager::CanEnemyMoveTo(Enemy* movingEnemy, Vector2 newPosition)
     if (!canMove)
         return false;
 
-    // No moverse a la posición del jugador
+    // Do not move onto the player's position
     if (newPosition.X == playerPosition.X && newPosition.Y == playerPosition.Y)
     {
         return false;
@@ -550,7 +550,7 @@ bool EntityManager::CanEnemyMoveTo(Enemy* movingEnemy, Vector2 newPosition)
 
     Lock();
 
-    // Verificar colisión con otros enemigos
+    // Check collision with other enemies
     for (Enemy* enemy : _enemies)
     {
         if (enemy == movingEnemy)
@@ -564,7 +564,7 @@ bool EntityManager::CanEnemyMoveTo(Enemy* movingEnemy, Vector2 newPosition)
         }
     }
 
-    // Verificar colisión con cofres
+    // Check collision with chests
     if (canMove)
     {
         for (Chest* chest : _chests)
@@ -578,7 +578,7 @@ bool EntityManager::CanEnemyMoveTo(Enemy* movingEnemy, Vector2 newPosition)
         }
     }
 
-    // Verificar colisión con items
+    // Check collision with items
     if (canMove)
     {
         for (Item* item : _items)
@@ -594,7 +594,7 @@ bool EntityManager::CanEnemyMoveTo(Enemy* movingEnemy, Vector2 newPosition)
 
     Unlock();
 
-    // Si puede moverse, actualizar en el mapa
+    // If movement is allowed, update the map
     if (canMove)
     {
         ClearPositionOnMap(currentPosition, room);

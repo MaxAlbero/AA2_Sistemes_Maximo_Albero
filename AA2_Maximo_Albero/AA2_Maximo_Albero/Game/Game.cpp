@@ -66,7 +66,7 @@ void Game::ActivateRoomEntities(Room* room)
     if (room == nullptr)
         return;
 
-    // Solo colocar en el mapa, NO iniciar threads
+    // Only place on map, DO NOT start threads
     room->ActivateEntities();
 }
 
@@ -75,10 +75,10 @@ void Game::StartRoomEnemyThreads(Room* room)
     if (room == nullptr)
         return;
 
-    // Configurar callbacks de todos los enemigos en la sala
+    // Configure callbacks for all enemies in the room
     _entityManager->ConfigureRoomEnemies(room);
 
-    // Iniciar threads individuales de cada enemigo
+    // Start individual threads for each enemy
     for (Enemy* enemy : room->GetEnemies())
     {
         if (enemy != nullptr)
@@ -91,18 +91,18 @@ void Game::DeactivateRoomEntities(Room* room)
     if (room == nullptr)
         return;
 
-    // PASO 1: Detener todos los threads de enemigos
+    // STEP 1: Stop all enemy threads
     for (Enemy* enemy : room->GetEnemies())
     {
         if (enemy != nullptr)
             enemy->StopMovement();
     }
 
-    // PASO 2: Esperar un momento para asegurar que todos terminaron
-    // Esto previene race conditions donde un thread todavía está dibujando
+    // STEP 2: Wait a moment to ensure all have finished
+    // This prevents race conditions where a thread is still drawing
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    // PASO 3: Quitar todas las entidades del mapa
+    // STEP 3: Remove all entities from the map
     room->DeactivateEntities();
 }
 
@@ -188,7 +188,7 @@ bool Game::LoadSavedGame()
     }
     else
     {
-        std::cout << " Error al cargar la partida. Iniciando nueva partida..." << std::endl;
+        std::cout << " Error loading game. Starting new game..." << std::endl;
         delete _player;
         _player = nullptr;
         return false;
@@ -204,7 +204,7 @@ void Game::StartNewGame()
     PlacePlayerOnMap(_playerPosition);
 }
 
-// ===== INICIO DEL JUEGO =====
+// GAME START
 
 void Game::Start()
 {
@@ -218,31 +218,31 @@ void Game::Start()
 
     _running = true;
 
-    // Crear el mundo
+    // Create the world
     CreateWorldRooms(Vector2(20, 10));
 
-    // Intentar cargar partida guardada
+    // Try to load saved game
     bool loadedGame = LoadSavedGame();
 
-    // Si no se cargó, crear nueva partida
+    // If not loaded, create new game
     if (!loadedGame)
         StartNewGame();
 
     _ui->SetMapSize(Vector2(20, 10));
     _messages->Start();
 
-    // Configurar input
+    // Configure input
     SetupInputListeners();
 
     _gameMutex.unlock();
 
-    // Dibujar interfaz
+    // Draw interface
     CC::Clear();
     DrawCurrentRoom();
     _ui->Start(_player);
     _inputSystem->StartListen();
 
-    // Configurar callbacks globales del EntityManager
+    // Configure global EntityManager callbacks
     Room* currentRoom = _dungeonMap->GetActiveRoom();
     _entityManager->SetCurrentRoom(currentRoom);
     _entityManager->SetupEnemyCallbacks(
@@ -257,7 +257,7 @@ void Game::Start()
     else
     {
         ActivateRoomEntities(currentRoom);
-        StartRoomEnemyThreads(currentRoom); // Iniciar threads DESPUÉS de dibujar
+        StartRoomEnemyThreads(currentRoom); // Start threads AFTER drawing
     }
 
     _spawner->Start(currentRoom);
@@ -277,12 +277,9 @@ void Game::Stop()
     _running = false;
     _gameMutex.unlock();
 
-    // Detener todos los sistemas
+    // Stop all systems
     _saveManager->StopAutoSave();
     _inputSystem->StopListen();
-
-    // Ya NO hay thread central de EntityManager que detener
-    // Los threads de enemigos se detienen al destruir EntityManager
 
     _spawner->Stop();
 
@@ -379,7 +376,7 @@ bool Game::TryAttackInRange(Vector2 direction, int attackRange)
             _playerPosition.Y + (direction.Y * range)
         );
 
-        // Verificar obstáculos
+        // Check obstacles
         bool pathBlocked = false;
         for (int checkRange = 1; checkRange <= range; checkRange++)
         {
@@ -463,7 +460,7 @@ void Game::MovePlayerTo(Vector2 newPosition)
     Room* currentRoom = _dungeonMap->GetActiveRoom();
     Vector2 oldPosition = _playerPosition;
 
-    // Limpiar posición anterior
+    // Clear previous position
     currentRoom->GetMap()->SafePickNode(oldPosition, [](Node* node) {
         if (node != nullptr)
         {
@@ -471,7 +468,7 @@ void Game::MovePlayerTo(Vector2 newPosition)
         }
         });
 
-    // Actualizar posición
+    // Update position
     _playerPosition = newPosition;
 
     if (_player != nullptr)
@@ -481,7 +478,7 @@ void Game::MovePlayerTo(Vector2 newPosition)
 
     UpdatePlayerOnMap();
 
-    // Redibujar
+    // Redraw
     RedrawPosition(oldPosition);
     RedrawPosition(_playerPosition);
 
@@ -515,11 +512,11 @@ void Game::MovePlayer(Vector2 direction)
         return;
     }
 
-    // Intentar usar portal
+    // Try to use portal
     if (TryUsePortal(newPosition))
-        return; // El mutex ya se desbloqueó en TryUsePortal
+        return; // Mutex already unlocked in TryUsePortal
 
-    // Intentar ataque a distancia
+    // Try ranged attack
     int attackRange = _player->GetAttackRange();
     if (TryAttackInRange(direction, attackRange))
     {
@@ -527,17 +524,17 @@ void Game::MovePlayer(Vector2 direction)
         return;
     }
 
-    // Intentar ataque cuerpo a cuerpo
+    // Try melee attack
     if (TryAttackAtPosition(newPosition))
     {
         _gameMutex.unlock();
         return;
     }
 
-    // Recoger item si hay
+    // Pick up item if there is one
     TryPickupItem(newPosition);
 
-    // Mover jugador
+    // Move player
     MovePlayerTo(newPosition);
 
     _gameMutex.unlock();
@@ -545,9 +542,9 @@ void Game::MovePlayer(Vector2 direction)
 
 void Game::ChangeRoom(PortalDir direction)
 {
-    // ===== FASE 1: PREPARACIÓN (sin locks) =====
+    // PHASE 1: PREPARATION (without locks)
 
-    // Calcular nueva posición
+    // Calculate new position
     int newX, newY;
 
     _gameMutex.lock();
@@ -564,12 +561,12 @@ void Game::ChangeRoom(PortalDir direction)
     case PortalDir::Down:   newY++; break;
     }
 
-    // ===== FASE 2: DETENER TODOS LOS SISTEMAS =====
-    // CRÍTICO: Detener spawner primero
+    // PHASE 2: STOP ALL SYSTEMS
+    // CRITICAL: Stop spawner first
     _spawner->Stop();
 
-    // ===== FASE 3: DETENER THREADS DE ENEMIGOS DE LA SALA ACTUAL =====
-    // Esto DEBE hacerse ANTES de tocar el mapa
+    // PHASE 3: STOP ENEMY THREADS FROM CURRENT ROOM
+    // This MUST be done BEFORE touching the map
     if (oldRoom != nullptr)
     {
         for (Enemy* enemy : oldRoom->GetEnemies())
@@ -579,25 +576,25 @@ void Game::ChangeRoom(PortalDir direction)
         }
     }
 
-    // Esperar a que todos los threads terminen
+    // Wait for all threads to finish
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    // ===== FASE 4: AHORA SÍ, MODIFICAR EL MAPA (con lock) =====
+    // PHASE 4: MODIFY THE MAP (with lock)
     _gameMutex.lock();
 
     if (oldRoom != nullptr)
     {
-        // Quitar jugador del mapa
+        // Remove player from map
         oldRoom->GetMap()->SafePickNode(_playerPosition, [](Node* node) {
             if (node != nullptr)
                 node->SetContent(nullptr);
             });
 
-        // Desactivar entidades (ya no hay threads corriendo)
+        // Deactivate entities (no threads running anymore)
         oldRoom->DeactivateEntities();
     }
 
-    // Cambiar a nueva sala
+    // Switch to new room
     _dungeonMap->SetActiveRoom(newX, newY);
     Room* newRoom = _dungeonMap->GetActiveRoom();
 
@@ -607,7 +604,7 @@ void Game::ChangeRoom(PortalDir direction)
         return;
     }
 
-    // Calcular posición del jugador
+    // Calculate player position
     PortalDir oppositeDir = GetOppositeDirection(direction);
     _playerPosition = newRoom->GetSpawnPositionFromPortal(oppositeDir);
 
@@ -616,7 +613,7 @@ void Game::ChangeRoom(PortalDir direction)
         _player->SetPosition(_playerPosition);
     }
 
-    // Activar entidades en el mapa (sin threads aún)
+    // Activate entities on map (without threads yet)
     ActivateRoomEntities(newRoom);
     UpdatePlayerOnMap();
 

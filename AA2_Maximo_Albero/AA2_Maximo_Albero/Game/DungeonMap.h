@@ -6,7 +6,7 @@
 class DungeonMap
 {
 private:
-    std::vector<std::vector<Room*>> _rooms; // Grid de rooms
+    std::vector<std::vector<Room*>> _rooms; // Grid of rooms
     int _currentX;
     int _currentY;
     int _worldWidth;

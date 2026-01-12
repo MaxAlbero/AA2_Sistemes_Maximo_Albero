@@ -89,8 +89,8 @@ Vector2 Enemy::GetRandomDirection()
     }
 }
 
-// Inicia el thread individual del enemigo
-// Cada enemigo gestiona su propio movimiento de forma autónoma
+// Starts the enemy's individual movement thread
+// Each enemy manages its own movement autonomously
 void Enemy::StartMovement()
 {
     _enemyMutex.lock();
@@ -105,11 +105,11 @@ void Enemy::StartMovement()
     _isActive = true;
     _enemyMutex.unlock();
 
-    // Crear thread que ejecuta MovementLoop()
+    // Create thread that MovementLoop() executes
     _movementThread = new std::thread(&Enemy::MovementLoop, this);
 }
 
-// Detiene el thread de movimiento del enemigo
+// Stops the enemy's movement thread
 void Enemy::StopMovement()
 {
     _enemyMutex.lock();
@@ -137,7 +137,7 @@ void Enemy::StopMovement()
     _enemyMutex.unlock();
 }
 
-// Establece los callbacks necesarios para que el enemigo pueda consultar al mundo
+// Sets the callbacks so the enemy can query the world
 void Enemy::SetMovementCallbacks(
     std::function<bool(Enemy*, Vector2)> canMoveCallback,
     std::function<Vector2()> getPlayerPosCallback,
@@ -168,8 +168,8 @@ void Enemy::Decode(Json::Value json) {
     _lastActionTime = std::chrono::steady_clock::now();
 }
 
-// Loop del thread individual del enemigo
-// AHORA cada enemigo gestiona su propio movimiento y ataque
+// Enemy individual thread loop
+// Each enemy manages its own movement and attack
 void Enemy::MovementLoop()
 {
     while (true)
@@ -183,15 +183,15 @@ void Enemy::MovementLoop()
         if (shouldStop)
             break;
 
-        // Verificar si estamos vivos
+        // Verify if enemy is alive
         if (!IsAlive())
             continue;
 
-        // Verificar cooldown
+        // Verify cooldown
         if (!CanPerformAction())
             continue;
 
-        // Verificar que los callbacks estén configurados
+        // Verify that the callbacks are configured
         _enemyMutex.lock();
         auto canMove = _canMoveToCallback;
         auto getPlayerPos = _getPlayerPositionCallback;
@@ -201,33 +201,33 @@ void Enemy::MovementLoop()
         if (!canMove || !getPlayerPos || !onAttackPlayer)
             continue;
 
-        // Obtener posición del jugador
+        // Get player position
         Vector2 playerPos = getPlayerPos();
 
-        // Validar que el jugador existe (no está en -1000, -1000)
+        // Verify that the player exists (no está en -1000, -1000)
         if (playerPos.X == -1000 && playerPos.Y == -1000)
             continue;
 
         Vector2 currentPos = GetPosition();
 
-        // Verificar si estamos adyacentes al jugador para atacar
+        // Check if the enemy is adjacent to the player to attack
         int distX = abs(currentPos.X - playerPos.X);
         int distY = abs(currentPos.Y - playerPos.Y);
         bool isAdjacent = (distX + distY) == 1;
 
         if (isAdjacent)
         {
-            // Atacar al jugador
+            // attack the player
             onAttackPlayer(this);
             UpdateActionTime();
             continue;
         }
 
-        // Intentar moverse
+        // Attempt to move
         Vector2 direction = GetRandomDirection();
         Vector2 newPos = currentPos + direction;
 
-        // Preguntar si podemos movernos a esa posición
+        // Ask if the enemy can move to the next position
         if (canMove(this, newPos))
         {
             SetPosition(newPos);

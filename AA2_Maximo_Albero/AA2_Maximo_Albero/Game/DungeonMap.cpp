@@ -31,7 +31,7 @@ Room* DungeonMap::GetActiveRoom()
     return GetRoom(_currentX, _currentY);
 }
 
-// Verifica si hay un room en una dirección específica
+// Verify if there's a room in a specific direction
 bool DungeonMap::HasRoomInDirection(PortalDir direction)
 {
     switch (direction)

@@ -29,15 +29,15 @@ bool Player::CanPerformAction()
 {
     Lock();
 
-    // Obtener tiempo actual
+    // Get current time
     auto currentTime = std::chrono::steady_clock::now();
 
-    // Calcular cuánto tiempo ha pasado desde la última acción
+    // Calculate how much time has passed since the last action
     auto timeSinceLastAction = std::chrono::duration_cast<std::chrono::milliseconds>(
         currentTime - _lastActionTime
     ).count();
 
-    // Verificar si ha pasado el tiempo de cooldown (por defecto 500ms)
+    // Check if cooldown time has passed (default 500ms)
     bool canAct = timeSinceLastAction >= _actionCooldownMs;
 
     Unlock();
@@ -67,12 +67,9 @@ void Player::ReceiveDamage(int damageToReceive) {
     Lock();
     _hp -= damageToReceive;
 
-    //std::cout << "¡El jugador recibe " << damageToReceive << " de daño! HP: " << _hp << std::endl;
-
     if (_hp <= 0)
     {
         _hp = 0;
-        //std::cout << "¡GAME OVER!" << std::endl;
     }
 
     Unlock();
@@ -114,7 +111,7 @@ void Player::UsePotion()
 {
     Lock();
 
-    // NUEVO: No hacer nada si está muerto
+    // Do nothing if the player is dead
     if (_hp <= 0)
     {
         Unlock();
@@ -129,7 +126,7 @@ void Player::UsePotion()
         if (_hp > _maxHp)
             _hp = _maxHp;
 
-        // Mostrar feedback visual
+        // Visual feedback
         CC::Lock();
         CC::SetPosition(0, 18);
         if (_messages != nullptr)
@@ -143,8 +140,8 @@ void Player::UsePotion()
 }
 
 
-//   - Espada (_weapon == 0): Rango 1 (solo casilla adyacente)
-//   - Lanza (_weapon == 1): Rango 2 (puede atacar 2 casillas de distancia)
+//   - Sword (_weapon == 0): Range 1 (adjacent tile only)
+//   - Spear (_weapon == 1): Range 2 (can attack from 2 tiles away)
 int Player::GetAttackRange()
 {
     Lock();

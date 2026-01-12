@@ -13,7 +13,7 @@ class Player : public INodeContent, public IAttacker, public IDamageable, public
 private:
     Vector2 _position;
     std::chrono::steady_clock::time_point _lastActionTime;
-    int _actionCooldownMs = 400; // Milisegundos entre acciones
+    int _actionCooldownMs = 400; // Milliseconds between actions
     int _hp;
     int _maxHp;
     int _coins;
