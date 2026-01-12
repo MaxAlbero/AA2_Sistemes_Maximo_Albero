@@ -7,6 +7,7 @@
 #include "../InputSystem/InputSystem.h"
 #include "UI.h"
 #include <mutex>
+#include <functional>
 #include "SaveManager.h"
 #include "../Utils/MessageSystem.h"
 
@@ -36,31 +37,52 @@ private:
     int _currentRoomIndex;
     bool _running;
     std::mutex _gameMutex;
-
     bool _gameOver;
 
-    void InitializeDungeon();
+    // ===== MÉTODOS DE INICIALIZACIÓN =====
+    void CreateWorldRooms(Vector2 roomSize);
+    bool LoadSavedGame();
+    void StartNewGame();
+    void SetupInputListeners();
+    void InitializeCurrentRoom();
+
+    // ===== MÉTODOS AUXILIARES PARA ENTIDADES =====
+    void ActivateRoomEntities(Room* room);
+    void DeactivateRoomEntities(Room* room);
+    void PlacePlayerOnMap(Vector2 position);
+
+    // ===== CALLBACKS =====
+    std::function<Vector2()> GetPlayerPositionCallback();
+    std::function<void(Enemy*)> GetEnemyAttackCallback();
+
+    // ===== RENDERIZADO =====
     void DrawCurrentRoom();
+    void RedrawPosition(Vector2 position);
 
-    bool LoadSavedGame();  // Nuevo método
-
+    // ===== VALIDACIÓN Y MOVIMIENTO =====
     bool CanMoveTo(Vector2 position);
     bool IsPositionOccupied(Vector2 position);
     void MovePlayer(Vector2 direction);
+    void MovePlayerTo(Vector2 newPosition);
     void UpdatePlayerOnMap();
 
-    void UpdateEnemyMovement();
+    // ===== INTERACCIONES =====
+    bool TryUsePortal(Vector2 newPosition);
+    bool TryAttackInRange(Vector2 direction, int attackRange);
+    bool TryAttackAtPosition(Vector2 position);
+    void TryPickupItem(Vector2 position);
 
+    // ===== GESTIÓN DE SALAS =====
     void ChangeRoom(PortalDir direction);
     PortalDir GetOppositeDirection(PortalDir dir);
+    void StartRoomEnemyThreads(Room* room);
 
-    void InitializeCurrentRoom();
-
-    // Callbacks para input
+    // ===== CALLBACKS DE INPUT =====
     void OnMoveUp();
     void OnMoveDown();
     void OnMoveLeft();
     void OnMoveRight();
 
+    // ===== GAME OVER =====
     void CheckPlayerDeath();
 };

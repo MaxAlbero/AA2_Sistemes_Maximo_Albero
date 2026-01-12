@@ -8,11 +8,10 @@
 #include <mutex>
 #include <thread>
 #include <atomic>
-
+#include <functional>
 #include <random>
 
 #include "../Json/ICodable.h"
-
 
 class Enemy : public INodeContent, public IAttacker, public IDamageable, public ICodable
 {
@@ -24,10 +23,15 @@ private:
     int _actionCooldownMs = 1000; // Milisegundos entre acciones
     std::mutex _enemyMutex;
 
-    // Thread de movimiento
+    // Thread de movimiento individual
     std::thread* _movementThread;
     std::atomic<bool> _isActive;
     std::atomic<bool> _shouldStop;
+
+    // Callbacks para consultar al mundo (EntityManager/Game)
+    std::function<bool(Enemy*, Vector2)> _canMoveToCallback;
+    std::function<Vector2()> _getPlayerPositionCallback;
+    std::function<void(Enemy*)> _onAttackPlayerCallback;
 
 public:
     Enemy() : Enemy(Vector2(0, 0)) {}
@@ -47,28 +51,29 @@ public:
     void Draw(Vector2 pos) override;
 
     Vector2 GetPosition();
-
     void SetPosition(Vector2 newPos);
 
     bool CanPerformAction();
-
     void UpdateActionTime();
-    void Attack(IDamageable* entity) const;
 
+    void Attack(IDamageable* entity) const;
     void ReceiveDamage(int damageToReceive);
 
     bool IsAlive();
-
     int GetHP();
 
     Vector2 GetRandomDirection();
+
+    // Gestión del thread individual
     void StartMovement();
-
     void StopMovement();
-
     bool IsActive() const { return _isActive; }
 
-    void RequestMove(std::function<bool(Vector2, Vector2&)> canMoveCallback);
+    // Configurar callbacks para que el enemigo pueda consultar el mundo
+    void SetMovementCallbacks(
+        std::function<bool(Enemy*, Vector2)> canMoveCallback,
+        std::function<Vector2()> getPlayerPosCallback,
+        std::function<void(Enemy*)> onAttackPlayerCallback);
 
     void Lock() { _enemyMutex.lock(); }
     void Unlock() { _enemyMutex.unlock(); }

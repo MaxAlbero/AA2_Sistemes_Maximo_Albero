@@ -33,7 +33,7 @@ void Room::RemoveItem(Item* item)
 // Permite que enemigos/cofres persistan entre visitas a la sala
 void Room::ActivateEntities()
 {
-    // Colocar todas las entidades en el mapa y dibujarlas
+    // Colocar enemigos en el mapa
     for (Enemy* enemy : _enemies)
     {
         if (enemy != nullptr)
@@ -46,39 +46,25 @@ void Room::ActivateEntities()
                 }
                 });
 
-            _map->SafePickNode(pos, [](Node* node) {
-                if (node != nullptr)
-                {
-                    node->DrawContent(Vector2(0, 0));
-                }
-                });
         }
     }
 
+    // Colocar cofres en el mapa
     for (Chest* chest : _chests)
     {
         if (chest != nullptr)
         {
             Vector2 pos = chest->GetPosition();
-
-            // Colocar enemigo en el nodo del mapa
             _map->SafePickNode(pos, [chest](Node* node) {
                 if (node != nullptr)
                 {
                     node->SetContent(chest);
                 }
                 });
-
-            // Dibujar el enemigo en pantalla
-            _map->SafePickNode(pos, [](Node* node) {
-                if (node != nullptr)
-                {
-                    node->DrawContent(Vector2(0, 0));
-                }
-                });
         }
     }
 
+    // Colocar items en el mapa
     for (Item* item : _items)
     {
         if (item != nullptr)
@@ -88,13 +74,6 @@ void Room::ActivateEntities()
                 if (node != nullptr)
                 {
                     node->SetContent(item);
-                }
-                });
-
-            _map->SafePickNode(pos, [](Node* node) {
-                if (node != nullptr)
-                {
-                    node->DrawContent(Vector2(0, 0));
                 }
                 });
         }
@@ -110,15 +89,12 @@ void Room::ActivateEntities()
 //   - Mantener estado de entidades para cuando volvamos a la sala
 void Room::DeactivateEntities()
 {
-    // Los enemigos siguen existiendo en _enemies, solo se quitan del mapa
-    // Su thread de movimiento se detiene en Game::ChangeRoom()
+    // Quitar enemigos del mapa
     for (Enemy* enemy : _enemies)
     {
         if (enemy != nullptr)
         {
             Vector2 pos = enemy->GetPosition();
-
-            // Quitar referencia del nodo (sin eliminar el enemigo)
             _map->SafePickNode(pos, [](Node* node) {
                 if (node != nullptr)
                 {
@@ -128,6 +104,7 @@ void Room::DeactivateEntities()
         }
     }
 
+    // Quitar cofres del mapa
     for (Chest* chest : _chests)
     {
         if (chest != nullptr)
@@ -142,6 +119,7 @@ void Room::DeactivateEntities()
         }
     }
 
+    // Quitar items del mapa
     for (Item* item : _items)
     {
         if (item != nullptr)
