@@ -16,7 +16,7 @@ public:
 
     void Start();
     void Stop();
-    void PushMessage(const std::string& text, int durationMs = 2000);
+    void PushMessage(const std::string& text, int durationMs = 20);
 
 private:
     std::vector<Message> _messages;
