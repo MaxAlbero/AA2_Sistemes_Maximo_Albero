@@ -208,8 +208,6 @@ void Game::StartNewGame()
 
 void Game::Start()
 {
-    srand((unsigned int)time(NULL));
-
     _gameMutex.lock();
 
     if (_running)

@@ -332,7 +332,11 @@ bool EntityManager::TryAttackChestAt(Vector2 position, Player* attacker, Room* r
 
 ItemType EntityManager::SelectLoot()
 {
-    int lootNum = rand() % 3;
+    srand((unsigned int)time(NULL));
+
+    int max = 3;
+    int min = 0;
+    int lootNum = rand() % (max - min + 1) + min;
 
     switch (lootNum)
     {
